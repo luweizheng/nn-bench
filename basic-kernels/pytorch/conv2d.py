@@ -13,18 +13,24 @@ import time
 import sys
 
 sys.path.append(os.path.abspath("../../nns"))
-import nnutils
 import nnstats
+import nnutils
 
 # calibration measurement
+
+
 def run_calibrate(input_image, func):
     output_result = input_image
 
 # forward
+
+
 def run_forward(input_image, func):
     output_result = func(input_image)
 
 # backward
+
+
 def run_backward(input_image, func):
     output_result = func(input_image)
 
@@ -50,8 +56,10 @@ def main(args):
 
     if args.platform == "gpu":
         device = torch.device('cuda:0')
+        device_func = torch.cuda
     elif args.platform == "npu":
         device = torch.device('npu:0')
+        device_func = torch.npu
     else:
         device = torch.device('cpu')
     print("Running on device {}".format(device))
@@ -97,6 +105,12 @@ def main(args):
     start = time.time()
     conv2d.eval()
     flops, mem = nnstats.get_flops_mem(conv2d, (64, 3, 224, 224))
+    if args.compute_type == "forward":
+        flops = flops
+    elif args.compute_type == "backward":
+        flops = flops * 3
+    else:
+        flop_sec = 0.0
     print(f"{flops}, {mem}")
     for i in range(args.num_warmups):
         compfunc(input_image, conv2d)
@@ -108,34 +122,33 @@ def main(args):
 
     print("running for {} steps".format(args.num_iterations))
     start = time.time()
+    start_event = device_func.Event(enable_timing=True)
+    end_event = device_func.Event(enable_timing=True)
+    start_event.record()
 
     for i in range(args.num_iterations):
         compfunc(input_image, conv2d)
 
-    torch.npu.synchronize()
+    end_event.record()
+    device_func.synchronize()
+    elapsed_time = start_event.elapsed_time(end_event) / 1000
     end = time.time()
     print("done")
 
     duration = end - start
-    if args.compute_type == "forward":
-        flop_sec = flops * args.num_iterations / duration
-    elif args.compute_type == "backward":
-        flop_sec = flops * args.num_iterations * 3 / duration
-    else:
-        flop_sec = 0.0
+    flop_sec = flops * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
-    
-    print(f"Run {duration:.6f} seconds, {duration/float(args.num_iterations):.6f} seconds/iter")
-    print(f"FLOPS: {flop_sec_scaled:.6f} {flop_sec_unit}, memory access: {mem_scaled:.6f} {mem_unit}")
 
+    print(f"time.time {duration:.6f} seconds cuda.time {elapsed_time:.6f}")
+    print(f"FLOPS: {flop_sec_scaled:.6f} {flop_sec_unit}, memory access: {mem_scaled:.6f} {mem_unit}")
 
 
 if __name__ == '__main__':
     AP = argparse.ArgumentParser()
     AP.add_argument('--platform', type=str, default="npu",
                     help='neural accelerator platform, cuda or npu')
-    AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=[64, 3, 224, 224], 
+    AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=[64, 3, 224, 224],
                     help='the shape of the input tensor. Note that it depends on data_format (default NHWC)')
     AP.add_argument('--data_format', type=str, default='NHWC',
                     help='choose either channels_last or channels_first')

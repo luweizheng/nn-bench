@@ -1,6 +1,7 @@
 #!/bin/bash
 
+source activate torch16
+
 cd ../pytorch
 
-source activate torch16
 python3 linear.py --platform="gpu"
