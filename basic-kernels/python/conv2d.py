@@ -83,7 +83,6 @@ def main(args):
     # the input format is NHWC, pytorch requires NCHW thus we do a transpose here
     input_image = torch.randn(input_tensor_shape[0], input_tensor_shape[1],
                               input_tensor_shape[2], input_tensor_shape[3], device=device, dtype=tensor_type)
-    input_image = input_image.to(device)
 
     # init the conv2d kernel
     conv2d = nn.Conv2d(
