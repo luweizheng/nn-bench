@@ -8,7 +8,6 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import numpy as np
-import cupy
 import argparse
 import time
 import sys
@@ -18,16 +17,16 @@ import nnutils
 import nnstats
 
 # calibration measurement
-def run_calibrate(input_tensor, func):
-    output_result = input_tensor
+def run_calibrate(input_image, func):
+    output_result = input_image
 
 # forward
-def run_forward(input_tensor, func):
-    output_result = func(input_tensor)
+def run_forward(input_image, func):
+    output_result = func(input_image)
 
 # backward
-def run_backward(input_tensor, func):
-    output_result = func(input_tensor)
+def run_backward(input_image, func):
+    output_result = func(input_image)
 
     #lr = 0.01
     #momentum = 0.5
@@ -51,10 +50,8 @@ def main(args):
 
     if args.platform == "gpu":
         device = torch.device('cuda:0')
-        device_func = torch.cuda
     elif args.platform == "npu":
         device = torch.device('npu:0')
-        device_func = torch.npu
     else:
         device = torch.device('cpu')
     print("Running on device {}".format(device))
@@ -73,38 +70,37 @@ def main(args):
     kernel_shape = args.kernel_shape
     # requires_grad=True indicates that we want to compute gradients during the backward pass
     if args.compute_type == "backward":
-        weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device, dtype=tensor_type, requires_grad=True)
-        biases = torch.randn(kernel_shape[1], device=device, dtype=tensor_type, requires_grad=True)
+        weights = torch.randn(kernel_shape[3], kernel_shape[2], kernel_shape[0],
+                              kernel_shape[1], device=device, dtype=tensor_type, requires_grad=True)
+        biases = torch.randn(
+            kernel_shape[3], device=device, dtype=tensor_type, requires_grad=True)
     else:
-        weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device, dtype=tensor_type)
-        biases = torch.randn(kernel_shape[1], device=device, dtype=tensor_type)
+        weights = torch.randn(kernel_shape[3], kernel_shape[2], kernel_shape[0],
+                              kernel_shape[1], device=device, dtype=tensor_type)
+        biases = torch.randn(kernel_shape[3], device=device, dtype=tensor_type)
 
     input_tensor_shape = args.input_tensor_shape
     # the input format is NHWC, pytorch requires NCHW thus we do a transpose here
-    input_tensor = torch.randn(input_tensor_shape[0], input_tensor_shape[1]
-                              , device=device, dtype=tensor_type)
+    input_image = torch.randn(input_tensor_shape[0], input_tensor_shape[1],
+                              input_tensor_shape[2], input_tensor_shape[3], device=device, dtype=tensor_type)
+    input_image = input_image.to(device)
 
-    # init the Linear kernel
-    linear = nn.Linear(in_features=kernel_shape[0], out_features=kernel_shape[1]).eval()
-    linear.weight = torch.nn.Parameter(weights)
-    linear.bias = torch.nn.Parameter(biases)
+    # init the conv2d kernel
+    conv2d = nn.Conv2d(
+        in_channels=kernel_shape[2], out_channels=kernel_shape[3], kernel_size=kernel_shape[0], stride=args.stride)
+    conv2d.weight = torch.nn.Parameter(weights)
+    conv2d.bias = torch.nn.Parameter(biases)
     # move the kernel to device
-    linear.to(device)
+    conv2d.to(device)
 
     # start session
     print("warming up for {} steps".format(args.num_warmups))
     start = time.time()
-    linear.eval()
-    flops, mem = nnstats.get_flops_mem(linear, input_tensor_shape)
-    if args.compute_type == "forward":
-        flops = flops
-    elif args.compute_type == "backward":
-        flops = flops * 3
-    else:
-        flop_sec = 0.0
-    print(f"{nnutils.unit_scale(flops)}, {nnutils.unit_scale(mem)}")
+    conv2d.eval()
+    flops, mem = nnstats.get_flops_mem(conv2d, (64, 3, 224, 224))
+    print(f"{flops}, {mem}")
     for i in range(args.num_warmups):
-        compfunc(input_tensor, linear)
+        compfunc(input_image, conv2d)
     end = time.time()
     print("done")
     duration = end - start
@@ -113,27 +109,25 @@ def main(args):
 
     print("running for {} steps".format(args.num_iterations))
     start = time.time()
-    start_event = device_func.Event(enable_timing=True)
-    end_event = device_func.Event(enable_timing=True)
-    start_event.record()
 
-    # cupy.cuda.profiler.start()
     for i in range(args.num_iterations):
-        compfunc(input_tensor, linear)
+        compfunc(input_image, conv2d)
 
-    end_event.record()
-    device_func.synchronize()  # Wait for the events to be recorded!
-    elapsed_time = start_event.elapsed_time(end_event) / 1000
+    torch.npu.synchronize()
     end = time.time()
     print("done")
 
-    flop_sec = flops * args.num_iterations / elapsed_time
-
     duration = end - start
+    if args.compute_type == "forward":
+        flop_sec = flops * args.num_iterations / duration
+    elif args.compute_type == "backward":
+        flop_sec = flops * args.num_iterations * 3 / duration
+    else:
+        flop_sec = 0.0
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
     
-    print(f"time.time {duration:.6f} seconds cuda.time {elapsed_time:.6f}")
+    print(f"Run {duration:.6f} seconds, {duration/float(args.num_iterations):.6f} seconds/iter")
     print(f"FLOPS: {flop_sec_scaled:.6f} {flop_sec_unit}, memory access: {mem_scaled:.6f} {mem_unit}")
 
 
@@ -142,10 +136,13 @@ if __name__ == '__main__':
     AP = argparse.ArgumentParser()
     AP.add_argument('--platform', type=str, default="npu",
                     help='neural accelerator platform, cuda or npu')
-    AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=(256, 16384), 
-                    help='the shape of the input tensor. usually (N, Hin)')
-    AP.add_argument('--kernel_shape', type=int, nargs='+', default=(16384, 16384), 
-                    help='the shape of the linear kernel [in_features, out_features]')
+    AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=[64, 3, 224, 224], 
+                    help='the shape of the input tensor. Note that it depends on data_format (default NHWC)')
+    AP.add_argument('--data_format', type=str, default='NHWC',
+                    help='choose either channels_last or channels_first')
+    AP.add_argument('--kernel_shape', type=int, nargs='+', default=[
+                    3, 3, 3, 64], help='the shape of the conv kernel [filter_height, filter_width, in_channels, out_channels]')
+    AP.add_argument('--stride', type=int, default=1, help='the stride')
     AP.add_argument('--dtype', type=str, default='float32',
                     help='the data type')
     AP.add_argument('--num_iterations', type=int, default=100,
@@ -153,7 +150,7 @@ if __name__ == '__main__':
     AP.add_argument('--num_warmups', type=int, default=10,
                     help='number of warmup steps')
     AP.add_argument('--compute_type', type=str,
-                    default="forward", help='forward/backward')
+                    default="forward", help='forward or backward pass')
     args = AP.parse_args()
 
     # print args
