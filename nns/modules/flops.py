@@ -8,6 +8,7 @@ from torch.nn import Module
 from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.modules.conv import _ConvNd, _ConvTransposeNd
 from torch.nn.modules.pooling import _MaxPoolNd, _AvgPoolNd, _AdaptiveMaxPoolNd, _AdaptiveAvgPoolNd
+from torch.nn.modules.rnn import RNN
 
 
 __all__ = ['module_flops']
@@ -56,6 +57,8 @@ def module_flops(module: Module, input: Tensor, output: Tensor) -> int:
         return flops_adaptive_avgpool(module, input, output)
     elif isinstance(module, nn.Dropout):
         return flops_dropout(module, input, output)
+    elif isinstance(module, nn.RNN):
+        return flops_rnn(module, input, output)
     else:
         warnings.warn(f'Module type not supported: {module.__class__.__name__}')
         return 0
@@ -227,3 +230,64 @@ def flops_adaptive_avgpool(module: _AdaptiveAvgPoolNd, input: Tensor, output: Te
 
     # for each spatial output element, sum elements in kernel scope and div by kernel size
     return output.numel() * (reduce(mul, kernel_size) - 1 + len(kernel_size))
+
+def rnn_cell_flops(flops, rnn_module, w_ih, w_hh, input_size):
+    # matrix matrix mult ih state and internal state
+    flops += w_ih.shape[0]*w_ih.shape[1]
+    # matrix matrix mult hh state and internal state
+    flops += w_hh.shape[0]*w_hh.shape[1]
+    if isinstance(rnn_module, (nn.RNN, nn.RNNCell)):
+        # add both operations
+        flops += rnn_module.hidden_size
+    elif isinstance(rnn_module, (nn.GRU, nn.GRUCell)):
+        # hadamard of r
+        flops += rnn_module.hidden_size
+        # adding operations from both states
+        flops += rnn_module.hidden_size*3
+        # last two hadamard product and add
+        flops += rnn_module.hidden_size*3
+    elif isinstance(rnn_module, (nn.LSTM, nn.LSTMCell)):
+        # adding operations from both states
+        flops += rnn_module.hidden_size*4
+        # two hadamard product and add for C state
+        flops += rnn_module.hidden_size + rnn_module.hidden_size + rnn_module.hidden_size
+        # final hadamard
+        flops += rnn_module.hidden_size + rnn_module.hidden_size + rnn_module.hidden_size
+    return flops
+
+def flops_rnn(module: RNN, input: Tensor, output: Tensor) -> int:
+    """
+        FLOPs estimation for `torch.nn.modules.rnn.RNN`
+        RNN input tensors are in shape like (seq, batch, feature) by default, 
+        except `batch_first` is set to true.
+    """
+    flops = 0
+
+    if module.batch_first == True:
+        batch_size = input.shape[0]
+        seq_length = input.shape[1]
+    else:
+        batch_size = input.shape[1]
+        seq_length = input.shape[0]
+
+    num_layers = module.num_layers
+    for i in range(num_layers):
+        w_ih = module.__getattr__('weight_ih_l' + str(i))
+        w_hh = module.__getattr__('weight_hh_l' + str(i))
+        if i == 0:
+            input_size = module.input_size
+        else:
+            input_size = module.hidden_size
+        flops = rnn_cell_flops(flops, module, w_ih, w_hh, input_size)
+        if module.bias:
+            b_ih = module.__getattr__('bias_ih_l' + str(i))
+            b_hh = module.__getattr__('bias_hh_l' + str(i))
+            flops += b_ih.shape[0] + b_hh.shape[0]
+
+    flops *= batch_size
+    flops *= seq_length
+    if module.bidirectional:
+        flops *= 2
+
+    return flops
+

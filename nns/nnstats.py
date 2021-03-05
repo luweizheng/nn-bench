@@ -1,4 +1,5 @@
 import os
+import logging
 
 import torch
 from torch.nn import Module
@@ -105,7 +106,11 @@ def crawl_module(
                     call_idxs[id(module)] = [len(info)]
                 else:
                     call_idxs[id(module)].append(len(info))
-
+                
+                print(f"{len(input)}")
+                print(f"{input[0].shape}")
+                print(f"input shape: {input[0][0].shape[1:]}")
+                print(f"input[0][0].shape[1:] shape: {input[0][0].shape}")
                 info.append(dict(name=name.rpartition('.')[-1],
                                  depth=len(name.split('.')) - 1,
                                  type=module.__class__.__name__,
@@ -157,7 +162,9 @@ def crawl_module(
                     tot_mem = module_mem(module, input[0], output)
 
                 # Update layer information
-                info[fw_idx]['output_shape'] = (-1, *output.shape[1:])
+                if not isinstance(module, (torch.nn.RNN)):
+                    info[fw_idx]['output_shape'] = (0,*output.shape[0:])
+                    #info[fw_idx]['output_shape'] = (-1, *output.shape[1:])
                 # Add them, since some modules can be used several times
                 info[fw_idx]['flops'] = tot_flops
                 info[fw_idx]['macs'] = tot_macs
