@@ -96,7 +96,7 @@ def main(args):
     print("warming up for {} steps".format(args.num_warmups))
     start = time.time()
     conv2d.eval()
-    flops, mem = nnstats.get_flops_mem(conv2d, (128, 3, 224, 224))
+    flops, mem = nnstats.get_flops_mem(conv2d, (64, 3, 224, 224))
     print(f"{flops}, {mem}")
     for i in range(args.num_warmups):
         compfunc(input_image, conv2d)
@@ -112,6 +112,7 @@ def main(args):
     for i in range(args.num_iterations):
         compfunc(input_image, conv2d)
 
+    torch.npu.synchronize()
     end = time.time()
     print("done")
 

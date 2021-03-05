@@ -8,7 +8,6 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import numpy as np
-import cupy
 import argparse
 import time
 import sys
@@ -123,8 +122,9 @@ def main(args):
 
     end_event.record()
     device_func.synchronize()  # Wait for the events to be recorded!
-    elapsed_time = start_event.elapsed_time(end_event) / 1000
     end = time.time()
+    elapsed_time = start_event.elapsed_time(end_event) / 1000
+    
     print("done")
 
     flop_sec = flops * args.num_iterations / elapsed_time
