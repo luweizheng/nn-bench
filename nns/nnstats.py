@@ -1,5 +1,10 @@
 import os
 import logging
+import sys
+logging.basicConfig(
+    stream=sys.stdout, 
+    format='{%(filename)s:%(lineno)d} %(levelname)s - %(message)s',
+    level=logging.DEBUG)
 
 import torch
 from torch.nn import Module
@@ -107,14 +112,10 @@ def crawl_module(
                 else:
                     call_idxs[id(module)].append(len(info))
                 
-                print(f"{len(input)}")
-                print(f"{input[0].shape}")
-                print(f"input shape: {input[0][0].shape[1:]}")
-                print(f"input[0][0].shape[1:] shape: {input[0][0].shape}")
                 info.append(dict(name=name.rpartition('.')[-1],
                                  depth=len(name.split('.')) - 1,
                                  type=module.__class__.__name__,
-                                 input_shape=(-1, *input[0][0].shape[1:]),
+                                 input_shape=(tuple(input[0].shape)),
                                  output_shape=None,
                                  grad_params=grad_params,
                                  nograd_params=nograd_params,
@@ -124,6 +125,8 @@ def crawl_module(
                                  flops=0,
                                  macs=0,
                                  mem=0,
+                                 input_elements=0,
+                                 output_elements=0,
                                  is_shared=is_shared,
                                  is_leaf=not any(module.children())))
                 # Mark the next hook for execution
@@ -162,9 +165,12 @@ def crawl_module(
                     tot_mem = module_mem(module, input[0], output)
 
                 # Update layer information
-                if not isinstance(module, (torch.nn.RNN)):
-                    info[fw_idx]['output_shape'] = (0,*output.shape[0:])
-                    #info[fw_idx]['output_shape'] = (-1, *output.shape[1:])
+                # RNN has two output tensor
+                if isinstance(module, (torch.nn.RNN)):
+                    info[fw_idx]['output_shape'] = (tuple(output[0].shape), tuple(output[1].shape))
+                else:
+                    info[fw_idx]['output_shape'] = tuple(output.shape)
+                
                 # Add them, since some modules can be used several times
                 info[fw_idx]['flops'] = tot_flops
                 info[fw_idx]['macs'] = tot_macs

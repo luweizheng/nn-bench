@@ -1,5 +1,5 @@
 from typing import Tuple, Dict, Any, Optional, List
-
+import logging
 
 def format_name(name: str, depth: int = 0) -> str:
     """Format a string for nested data printing
@@ -104,7 +104,7 @@ def flops_mem(module_info):
         (flops, mem_access)
     """
     for layer in module_info['layers']:
-        print(layer)
+        logging.debug(layer)
     flops = sum(layer['flops'] for layer in module_info['layers'])
     mem = sum(layer['mem'] for layer in module_info['layers'])
 
