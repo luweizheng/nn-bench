@@ -78,8 +78,8 @@ def main(args):
         weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device, dtype=tensor_type)
         biases = torch.randn(kernel_shape[1], device=device, dtype=tensor_type)
 
-    input_tensor_shape = args.input_tensor_shape
-    # the input format is NHWC, pytorch requires NCHW thus we do a transpose here
+    input_tensor_shape = tuple(args.input_tensor_shape)
+
     input_tensor = torch.randn(input_tensor_shape[0], input_tensor_shape[1]
                               , device=device, dtype=tensor_type)
 
@@ -91,26 +91,27 @@ def main(args):
     linear.to(device)
 
     # start session
-    print("warming up for {} steps".format(args.num_warmups))
+    # print("warming up for {} steps".format(args.num_warmups))
     start = time.time()
     linear.eval()
     flops, mem = nnstats.get_flops_mem(linear, input_tensor_shape)
+
     if args.compute_type == "forward":
         flops = flops
     elif args.compute_type == "backward":
         flops = flops * 3
     else:
         flop_sec = 0.0
-    print(f"{nnutils.unit_scale(flops)}, {nnutils.unit_scale(mem)}")
+    
     for i in range(args.num_warmups):
         compfunc(input_tensor, linear)
     end = time.time()
-    print("done")
+    # print("done")
     duration = end - start
-    print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration,
-                                                              duration/float(args.num_warmups)))
+    # print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration,
+    #                                                           duration/float(args.num_warmups)))
 
-    print("running for {} steps".format(args.num_iterations))
+    # print("running for {} steps".format(args.num_iterations))
     start = time.time()
     start_event = device_func.Event(enable_timing=True)
     end_event = device_func.Event(enable_timing=True)
@@ -125,7 +126,7 @@ def main(args):
     end = time.time()
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     
-    print("done")
+    # print("done")
 
     flop_sec = flops * args.num_iterations / elapsed_time
 
@@ -133,8 +134,9 @@ def main(args):
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
     
-    print(f"time.time {duration:.6f} seconds cuda.time {elapsed_time:.6f}")
-    print(f"FLOPS: {flop_sec_scaled:.6f} {flop_sec_unit}, memory access: {mem_scaled:.6f} {mem_unit}")
+    print(f"time.time {duration:.6f} seconds device.time {elapsed_time:.6f}")
+    print(f"FLOPS: {flop_sec}")
+    print(f"memory: {mem}")
 
 
 
@@ -142,9 +144,9 @@ if __name__ == '__main__':
     AP = argparse.ArgumentParser()
     AP.add_argument('--platform', type=str, default="npu",
                     help='neural accelerator platform, cuda or npu')
-    AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=(256, 16384), 
-                    help='the shape of the input tensor. usually (N, Hin)')
-    AP.add_argument('--kernel_shape', type=int, nargs='+', default=(16384, 16384), 
+    AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=[256, 16384], 
+                    help='the shape of the input tensor. [batch_size, in_features]')
+    AP.add_argument('--kernel_shape', type=int, nargs='+', default=[16384, 16384], 
                     help='the shape of the linear kernel [in_features, out_features]')
     AP.add_argument('--dtype', type=str, default='float32',
                     help='the data type')
@@ -156,7 +158,7 @@ if __name__ == '__main__':
                     default="forward", help='forward/backward')
     args = AP.parse_args()
 
-    # print args
+    # print arguments
     # for arg in vars(args):
     #     print(arg, ":", getattr(args, arg))
 

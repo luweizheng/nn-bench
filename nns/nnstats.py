@@ -61,6 +61,7 @@ def crawl_module(
     # input
     if not isinstance(input_shape, list):
         input_shape = [input_shape]
+
     if dtype is None:
         dtype = p.data.dtype
     if isinstance(dtype, torch.dtype):

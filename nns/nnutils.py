@@ -103,8 +103,8 @@ def flops_mem(module_info):
     Returns:
         (flops, mem_access)
     """
-    for layer in module_info['layers']:
-        logging.debug(layer)
+    # for layer in module_info['layers']:
+    #     logging.debug(layer)
     flops = sum(layer['flops'] for layer in module_info['layers'])
     mem = sum(layer['mem'] for layer in module_info['layers'])
 
