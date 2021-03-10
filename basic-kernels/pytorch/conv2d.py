@@ -11,6 +11,7 @@ import numpy as np
 import argparse
 import time
 import sys
+import logging
 
 sys.path.append(os.path.abspath("../../nns"))
 import nnstats
@@ -115,6 +116,11 @@ def main(args):
     for i in range(args.num_warmups):
         compfunc(input_image, conv2d)
     end = time.time()
+    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    
+    torch.cuda.empty_cache()
+    torch.cuda.reset_max_memory_allocated()
+    torch.cuda.synchronize()
     print("done")
     duration = end - start
     print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration,
@@ -131,6 +137,7 @@ def main(args):
 
     end_event.record()
     device_func.synchronize()
+    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     end = time.time()
     print("done")
@@ -140,8 +147,9 @@ def main(args):
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
 
-    print(f"time.time {duration:.6f} seconds cuda.time {elapsed_time:.6f}")
-    print(f"FLOPS: {flop_sec_scaled:.6f} {flop_sec_unit}, memory access: {mem_scaled:.6f} {mem_unit}")
+    print(f"time.time {duration:.6f} seconds device.time {elapsed_time:.6f}")
+    print(f"FLOPS: {flop_sec}")
+    print(f"memory: {mem}")
 
 
 if __name__ == '__main__':

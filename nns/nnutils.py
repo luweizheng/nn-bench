@@ -95,6 +95,17 @@ def format_line_str(
     return line_str
 
 
+# def dtype_to_bytes(dtype: torch.dtype) -> int:
+#     b = 1
+#     if dtype == torch.float32:
+#         b = 4
+#     elif dtype == torch.float16:
+#         b = 2
+#     elif dtype == torch.int or dtype == torch.int32:
+#         b = 4
+    
+#     return b
+
 def flops_mem(module_info):
     """Get flops and memory access summary for an expected input tensor shape
 
@@ -103,12 +114,16 @@ def flops_mem(module_info):
     Returns:
         (flops, mem_access)
     """
-    # for layer in module_info['layers']:
-    #     logging.debug(layer)
-    flops = sum(layer['flops'] for layer in module_info['layers'])
-    mem = sum(layer['mem'] for layer in module_info['layers'])
+    flops = 0
+    numel = 0
+    for layer in module_info['layers']:
+        logging.debug(layer)
+        flops += layer['flops']
+        numel += (layer['elements']['input'] + layer['elements']['params'])
+        if layer['depth'] == 0:
+            numel += layer['elements']['output']
 
-    return (flops, mem)
+    return (flops, numel)
 
 def format_info(
     module_info: Dict[str, Any],

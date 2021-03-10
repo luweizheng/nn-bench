@@ -10,11 +10,11 @@ platform="gpu"
 
 for dtype in float16 float32
 do
-    for batch_size in 32 64 #128 256 512
+    for batch_size in 512 #32 64 128 256 512
     do
-        for input_size in 128 #256 512 1024
+        for input_size in 10240 #128 256 512 1024
         do
-            for output_size in 128 #256 512 1024
+            for output_size in 10240 #128 256 512 1024
             do
                 filename=${platform}-${compute_type}-${dtype}-bs_${batch_size}_-input-${input_size}-output-${output_size}
                 echo $filename

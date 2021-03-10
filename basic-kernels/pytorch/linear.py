@@ -11,6 +11,7 @@ import numpy as np
 import argparse
 import time
 import sys
+import logging
 
 sys.path.append(os.path.abspath("../../nns"))
 import nnutils
@@ -108,8 +109,14 @@ def main(args):
     end = time.time()
     # print("done")
     duration = end - start
-    # print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration,
-    #                                                           duration/float(args.num_warmups)))
+
+    # logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    
+    torch.cuda.empty_cache()
+    torch.cuda.reset_max_memory_allocated()
+    torch.cuda.synchronize()
+
+    # print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration, duration/float(args.num_warmups)))
 
     # print("running for {} steps".format(args.num_iterations))
     start = time.time()
@@ -123,6 +130,8 @@ def main(args):
 
     end_event.record()
     device_func.synchronize()  # Wait for the events to be recorded!
+
+    # logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
     end = time.time()
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     

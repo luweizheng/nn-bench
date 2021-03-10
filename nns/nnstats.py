@@ -10,7 +10,7 @@ import torch
 from torch.nn import Module
 from typing import Callable, Optional, Dict, Any, Tuple, List, Union, Iterable
 
-from modules import module_mem, module_flops, module_macs
+from modules import module_mem, module_flops, module_macs, module_numel
 import nnutils
 from nnutils import aggregate_info, format_info
 
@@ -126,8 +126,7 @@ def crawl_module(
                                  flops=0,
                                  macs=0,
                                  mem=0,
-                                 input_elements=0,
-                                 output_elements=0,
+                                 elements=dict(),
                                  is_shared=is_shared,
                                  is_leaf=not any(module.children())))
                 # Mark the next hook for execution
@@ -164,6 +163,7 @@ def crawl_module(
                     tot_flops = module_flops(module, input[0], output)
                     tot_macs = module_macs(module, input[0], output)
                     tot_mem = module_mem(module, input[0], output)
+                    tot_numel = module_numel(module, input[0], output)
 
                 # Update layer information
                 # RNN has two output tensor
@@ -176,6 +176,7 @@ def crawl_module(
                 info[fw_idx]['flops'] = tot_flops
                 info[fw_idx]['macs'] = tot_macs
                 info[fw_idx]['mem'] = tot_mem
+                info[fw_idx]['elements'] = tot_numel
 
                 # Mark the next hook for execution
                 post_hook_tracker[id(module)]['target'] += 1
