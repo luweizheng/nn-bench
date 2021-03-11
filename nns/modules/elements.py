@@ -13,7 +13,7 @@ from typing import Union
 
 __all__ = ['module_numel']
 
-def num_params(module: Module) -> int:
+def params_size(module: Module) -> int:
     """Compute the number of parameters
 
     Args:
@@ -22,7 +22,7 @@ def num_params(module: Module) -> int:
         int: number of parameter elements
     """
 
-    return sum(p.data.numel() for p in module.parameters())
+    return sum(p.data.numel() * p.data.element_size() for p in module.parameters())
 
 def module_numel(module: Module, input: Tensor, output: Tensor) -> dict():
     """Estimate the number of element of the module, including input elements, output elements, weights and bias.
@@ -71,22 +71,22 @@ def module_numel(module: Module, input: Tensor, output: Tensor) -> dict():
 def numel_convnd(module: _ConvNd, input: Tensor, output: Tensor) -> dict:
     """number of elements estimation for `_ConvNd`"""
 
-    input_numel = input.numel()
+    input_tensor_size = input.numel() * input.element_size()
     # Access weight and bias
-    params = num_params(module)
-    output_numel = output.numel()
+    params = params_size(module)
+    output_tensor_size = output.numel() * output.element_size()
 
-    return dict(input=input_numel, params=params, output=output_numel)
+    return dict(input=input_tensor_size, params=params, output=output_tensor_size)
 
 def numel_linear(module: nn.Linear, input: Tensor, output: Tensor) -> dict:
     """number of elements estimation for `torch.nn.Linear`"""
 
-    input_numel = input.numel()
+    input_tensor_size = input.numel() * input.element_size()
     # Access weight and bias
-    params = num_params(module)
-    output_numel = output.numel()
+    params = params_size(module)
+    output_tensor_size = output.numel() * output.element_size()
 
-    return dict(input=input_numel, params=params, output=output_numel)
+    return dict(input=input_tensor_size, params=params, output=output_tensor_size)
 
 def numel_rnn(module: nn.RNN, input: Tensor, output: Tensor) -> dict:
     """number of elements estimation for `torch.nn.RNN`"""
@@ -103,7 +103,7 @@ def numel_rnn(module: nn.RNN, input: Tensor, output: Tensor) -> dict:
 
     logging.debug(f"input tensor shape {input.shape}, input elements {input.numel()}")
     # Access weight and bias
-    params = num_params(module)
+    params = params_size(module)
 
     logging.debug(f"params {params}")
 
@@ -112,3 +112,48 @@ def numel_rnn(module: nn.RNN, input: Tensor, output: Tensor) -> dict:
     output_numel = output[0].numel() + output[1].numel()
 
     return dict(input=input_numel, params=params, output=output_numel)
+
+
+# def numel_flatten(module: nn.Flatten, input: Tensor, output: Tensor) -> int:
+#     """estimation for `torch.nn.Flatten`"""
+
+#     input_tensor_size = input.numel() * input.element_size()
+#     output_tensor_size = output.numel() * output.element_size()
+#     return dict(input=input_tensor_size, params=0, output=output_tensor_size)
+
+
+# def numel_relu(module: Union[nn.ReLU, nn.ReLU6], input: Tensor, output: Tensor) -> int:
+#     """estimation for `torch.nn.ReLU`"""
+
+#     input_tensor_size = input.numel() * input.element_size()
+#     output_tensor_size = output.numel() * output.element_size()
+
+#     return dict(input=input_tensor_size, params=0, output=output_tensor_size)
+
+# def numel_sigmoid(module: nn.Sigmoid, input: Tensor, output: Tensor) -> int:
+#     """estimation for `torch.nn.Sigmoid`"""
+
+#     input_tensor_size = input.numel() * input.element_size()
+#     output_tensor_size = output.numel() * output.element_size()
+
+#     return dict(input=input_tensor_size, params=0, output=output_tensor_size)
+
+# def numel_tanh(module: nn.Tanh, input: Tensor, output: Tensor) -> int:
+#     """estimation for `torch.nn.Tanh`"""
+
+#     input_tensor_size = input.numel() * input.element_size()
+#     output_tensor_size = output.numel() * output.element_size()
+
+#     return dict(input=input_tensor_size, params=0, output=output_tensor_size)
+
+# def numel_dropout(module: nn.Dropout, input: Tensor, output: Tensor) -> int:
+#     """estimation for `torch.nn.Dropout`"""
+
+#     input_dma = input.numel()
+
+#     # Access sampling probability
+#     ops_dma = 1
+
+#     output_dma = 0 if module.inplace else output.numel()
+
+#     return input_dma + ops_dma + output_dma

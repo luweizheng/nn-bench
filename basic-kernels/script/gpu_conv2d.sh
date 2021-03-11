@@ -47,6 +47,6 @@ for metric in ${metrics}; do
     profilestring=${profilestring}" -o profile.name_${name}.batchsize_${batch_size}.inputshape_${input_shape}.kernelshape_${kernel_shape}.stride_${stride}.dataformat_.fp${prec}.pass_${ctype}"
 
     ${profilestring} $(which python) -u ./conv2d.py \
-                --platform gpu
+                --platform gpu \
                 --dtype float16 
 done
