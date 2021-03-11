@@ -17,6 +17,8 @@ sys.path.append(os.path.abspath("../../nns"))
 import nnstats
 import nnutils
 
+import cupy
+
 # calibration measurement
 
 
@@ -126,6 +128,7 @@ def main(args):
     print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration,
                                                               duration/float(args.num_warmups)))
 
+    cupy.cuda.profiler.start()
     print("running for {} steps".format(args.num_iterations))
     start = time.time()
     start_event = device_func.Event(enable_timing=True)
@@ -135,9 +138,11 @@ def main(args):
     for i in range(args.num_iterations):
         compfunc(input_image, conv2d)
 
+    cupy.cuda.profiler.stop()
     end_event.record()
     device_func.synchronize()
-    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    max_mem = torch.cuda.max_memory_allocated()
+    
     logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     end = time.time()
@@ -147,10 +152,15 @@ def main(args):
     flop_sec = flops * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
+    max_mem_scaled, max_mem_unit = nnutils.unit_scale(max_mem)
 
     print(f"time.time {duration:.6f} seconds device.time {elapsed_time:.6f}")
     print(f"FLOPS: {flop_sec}")
     print(f"memory: {mem}")
+
+    print(f"scale_flops: {flop_sec_scaled} {flop_sec_unit}")
+    print(f"scale_mem: {mem_scaled} {mem_unit}")
+    print(f"max_scale_mem: {max_mem_scaled} {max_mem_unit}")
 
 
 if __name__ == '__main__':
