@@ -110,7 +110,8 @@ def main(args):
     # print("done")
     duration = end - start
 
-    # logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
     
     torch.cuda.empty_cache()
     torch.cuda.reset_max_memory_allocated()
@@ -131,7 +132,8 @@ def main(args):
     end_event.record()
     device_func.synchronize()  # Wait for the events to be recorded!
 
-    # logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
     end = time.time()
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     

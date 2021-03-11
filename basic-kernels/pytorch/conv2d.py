@@ -117,8 +117,8 @@ def main(args):
         compfunc(input_image, conv2d)
     end = time.time()
     logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
     
-    torch.cuda.empty_cache()
     torch.cuda.reset_max_memory_allocated()
     torch.cuda.synchronize()
     print("done")
@@ -138,6 +138,7 @@ def main(args):
     end_event.record()
     device_func.synchronize()
     logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
+    logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     end = time.time()
     print("done")
