@@ -176,7 +176,7 @@ def crawl_module(
                 info[fw_idx]['flops'] = tot_flops
                 info[fw_idx]['macs'] = tot_macs
                 info[fw_idx]['mem'] = tot_mem
-                info[fw_idx]['elements'] = tot_numel
+                # info[fw_idx]['elements'] = tot_numel
 
                 # Mark the next hook for execution
                 post_hook_tracker[id(module)]['target'] += 1

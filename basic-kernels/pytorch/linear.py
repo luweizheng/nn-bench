@@ -119,10 +119,12 @@ def main(args):
     flop_sec = flops * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
+    arithemetic_intensity = flop_sec / (mem * 2)
     
     print(f"device time: {elapsed_time:.6f}")
     print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
+    print(f"arithemetic intensity: {arithemetic_intensity}")
     print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
     print(f"memory_scaled: {mem_scaled} {mem_unit}")
 

@@ -169,7 +169,7 @@ def mem_convnd(module: _ConvNd, input: Tensor, output: Tensor) -> int:
     ops_dma = num_params(module)
     output_dma = output.numel()
 
-    return input_dma + ops_dma
+    return input_dma + ops_dma + output_dma
 
 
 def mem_bn(module: _BatchNorm, input: Tensor, output: Tensor) -> int:
