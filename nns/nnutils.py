@@ -119,9 +119,9 @@ def flops_mem(module_info):
     for layer in module_info['layers']:
         logging.debug(layer)
         flops += layer['flops']
-        numel += (layer['elements']['input'] + layer['elements']['params'])
-        if layer['depth'] == 0:
-            numel += layer['elements']['output']
+        # numel += (layer['elements']['input'] + layer['elements']['params'])
+        # if layer['depth'] == 0:
+        #     numel += layer['elements']['output']
 
     return (flops, numel)
 
