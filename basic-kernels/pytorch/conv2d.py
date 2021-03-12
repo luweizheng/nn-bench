@@ -18,42 +18,28 @@ import nnstats
 import nnutils
 
 # calibration measurement
-
-
-def run_calibrate(input_image, func):
-    output_result = input_image
+def run_calibrate(input_tensor, model):
+    output_result = input_tensor
 
 # forward
-
-
-def run_forward(input_image, func):
-    output_result = func(input_image)
+def run_forward(input_tensor, model):
+    output_result = model(input_tensor)
 
 # backward
+def run_backward(input_tensor, model):
+    output_result = model(input_tensor)
 
+    lr = 0.01
+    momentum = 0.5
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+    optimizer.zero_grad()
 
-def run_backward(input_image, func):
-    output_result = func(input_image)
-
-    #lr = 0.01
-    #momentum = 0.5
-    #optimizer = optim.SGD(conv2d.parameters(), lr=lr, momentum=momentum)
-    # optimizer.zero_grad()
-
-    res = torch.sum(output_result)
-    res.backward()
-    # optimizer.step()
+    loss = torch.sum(output_result)
+    loss.backward()
+    optimizer.step()
 
 
 def main(args):
-
-    # datatype selection
-    if args.dtype == 'float16':
-        tensor_type = torch.float16
-    elif args.dtype == 'float32':
-        tensor_type = torch.float32
-    else:
-        raise Exception('data type can only be float16 or float32')
 
     if args.platform == "gpu":
         device = torch.device('cuda:0')
@@ -80,83 +66,65 @@ def main(args):
     # requires_grad=True indicates that we want to compute gradients during the backward pass
     if args.compute_type == "backward":
         weights = torch.randn(kernel_shape[3], kernel_shape[2], kernel_shape[0],
-                              kernel_shape[1], device=device, dtype=tensor_type, requires_grad=True)
+                              kernel_shape[1], device=device, requires_grad=True)
         biases = torch.randn(
-            kernel_shape[3], device=device, dtype=tensor_type, requires_grad=True)
+            kernel_shape[3], device=device, requires_grad=True)
     else:
         weights = torch.randn(kernel_shape[3], kernel_shape[2], kernel_shape[0],
-                              kernel_shape[1], device=device, dtype=tensor_type)
-        biases = torch.randn(kernel_shape[3], device=device, dtype=tensor_type)
+                              kernel_shape[1], device=device)
+        biases = torch.randn(kernel_shape[3], device=device)
 
-    input_tensor_shape = args.input_tensor_shape
-    # the input format is NHWC, pytorch requires NCHW thus we do a transpose here
-    input_image = torch.randn(input_tensor_shape[0], input_tensor_shape[1],
-                              input_tensor_shape[2], input_tensor_shape[3], device=device, dtype=tensor_type)
+    input_tensor_shape = tuple(args.input_tensor_shape)
+    input_tensor = torch.randn(input_tensor_shape[0], input_tensor_shape[1],
+                              input_tensor_shape[2], input_tensor_shape[3], device=device)
+    
+    if args.dtype == "float16":
+        input_tensor = input_tensor.half()
 
     # init the conv2d kernel
-    conv2d = nn.Conv2d(
-        in_channels=kernel_shape[2], out_channels=kernel_shape[3], kernel_size=kernel_shape[0], stride=args.stride)
+    conv2d = nn.Conv2d(in_channels=kernel_shape[2], out_channels=kernel_shape[3], kernel_size=kernel_shape[0], stride=args.stride)
     conv2d.weight = torch.nn.Parameter(weights)
     conv2d.bias = torch.nn.Parameter(biases)
     # move the kernel to device
     conv2d.to(device)
+    if args.dtype == "float16":
+        conv2d = conv2d.half()
 
-    # start session
-    print("warming up for {} steps".format(args.num_warmups))
-    start = time.time()
+    # warm up
     conv2d.eval()
-    flops, mem = nnstats.get_flops_mem(conv2d, (64, 3, 224, 224))
+    flops, mem = nnstats.get_flops_mem(conv2d, input_tensor_shape)
     if args.compute_type == "forward":
         flops = flops
     elif args.compute_type == "backward":
         flops = flops * 3
     else:
         flop_sec = 0.0
-    print(f"{flops}, {mem}")
+    print(f"float point operations: {flops}")
     for i in range(args.num_warmups):
-        compfunc(input_image, conv2d)
-    end = time.time()
-    # logging.debug(f"Max memory used by tensors = {device_func.max_memory_allocated()} bytes")
-    # logging.debug(f"Max memory used by tensors = {device_func.memory_allocated()} bytes")
-    
-    # device_func.reset_max_memory_allocated()
+        compfunc(input_tensor, conv2d)
     device_func.synchronize()
-    print("done")
-    duration = end - start
-    print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration,
-                                                              duration/float(args.num_warmups)))
-
-    print("running for {} steps".format(args.num_iterations))
-    start = time.time()
+    
+    # bench
     start_event = device_func.Event(enable_timing=True)
     end_event = device_func.Event(enable_timing=True)
     start_event.record()
 
     for i in range(args.num_iterations):
-        compfunc(input_image, conv2d)
+        compfunc(input_tensor, conv2d)
 
     end_event.record()
     device_func.synchronize()
-    # max_mem = device_func.max_memory_allocated()
-    
-    # logging.debug(f"Max memory used by tensors = {device_func.memory_allocated()} bytes")
     elapsed_time = start_event.elapsed_time(end_event) / 1000
-    end = time.time()
-    print("done")
 
-    duration = end - start
     flop_sec = flops * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
-    # max_mem_scaled, max_mem_unit = nnutils.unit_scale(max_mem)
 
-    print(f"time.time {duration:.6f} seconds device.time {elapsed_time:.6f}")
-    print(f"FLOPS: {flop_sec}")
+    print(f"device time: {elapsed_time:.6f}")
+    print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
-
-    print(f"scale_flops: {flop_sec_scaled} {flop_sec_unit}")
-    print(f"scale_mem: {mem_scaled} {mem_unit}")
-    # print(f"max_scale_mem: {max_mem_scaled} {max_mem_unit}")
+    print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
+    print(f"memory_scaled: {mem_scaled} {mem_unit}")
 
 
 if __name__ == '__main__':

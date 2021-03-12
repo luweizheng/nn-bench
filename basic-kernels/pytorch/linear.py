@@ -18,36 +18,29 @@ import nnutils
 import nnstats
 
 # calibration measurement
-def run_calibrate(input_tensor, func):
+def run_calibrate(input_tensor, model):
     output_result = input_tensor
 
 # forward
-def run_forward(input_tensor, func):
-    output_result = func(input_tensor)
+def run_forward(input_tensor, model):
+    output_result = model(input_tensor)
 
 # backward
-def run_backward(input_tensor, func):
-    output_result = func(input_tensor)
+def run_backward(input_tensor, model):
+    model.train()
+    output_result = model(input_tensor)
 
-    #lr = 0.01
-    #momentum = 0.5
-    #optimizer = optim.SGD(conv2d.parameters(), lr=lr, momentum=momentum)
-    # optimizer.zero_grad()
+    lr = 0.01
+    momentum = 0.5
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+    optimizer.zero_grad()
 
-    res = torch.sum(output_result)
-    res.backward()
-    # optimizer.step()
+    loss = torch.sum(output_result)
+    loss.backward()
+    optimizer.step()
 
 
 def main(args):
-
-    # datatype selection
-    if args.dtype == 'float16':
-        tensor_type = torch.float16
-    elif args.dtype == 'float32':
-        tensor_type = torch.float32
-    else:
-        raise Exception('data type can only be float16 or float32')
 
     if args.platform == "gpu":
         device = torch.device('cuda:0')
@@ -73,27 +66,29 @@ def main(args):
     kernel_shape = args.kernel_shape
     # requires_grad=True indicates that we want to compute gradients during the backward pass
     if args.compute_type == "backward":
-        weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device, dtype=tensor_type, requires_grad=True)
-        biases = torch.randn(kernel_shape[1], device=device, dtype=tensor_type, requires_grad=True)
+        weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device, requires_grad=True)
+        biases = torch.randn(kernel_shape[1], device=device, requires_grad=True)
     else:
-        weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device, dtype=tensor_type)
-        biases = torch.randn(kernel_shape[1], device=device, dtype=tensor_type)
+        weights = torch.randn(kernel_shape[1], kernel_shape[0], device=device)
+        biases = torch.randn(kernel_shape[1], device=device)
 
     input_tensor_shape = tuple(args.input_tensor_shape)
 
-    input_tensor = torch.randn(input_tensor_shape[0], input_tensor_shape[1]
-                              , device=device, dtype=tensor_type)
+    input_tensor = torch.randn(input_tensor_shape[0], input_tensor_shape[1], device=device)
+    if args.dtype == 'float16':
+        input_tensor = input_tensor.half()
 
     # init the Linear kernel
     linear = nn.Linear(in_features=kernel_shape[0], out_features=kernel_shape[1]).eval()
     linear.weight = torch.nn.Parameter(weights)
     linear.bias = torch.nn.Parameter(biases)
+    
     # move the kernel to device
     linear.to(device)
+    if args.dtype == 'float16':
+        linear = linear.half()
 
-    # start session
-    # print("warming up for {} steps".format(args.num_warmups))
-    start = time.time()
+    # warm up
     linear.eval()
     flops, mem = nnstats.get_flops_mem(linear, input_tensor_shape)
 
@@ -104,51 +99,32 @@ def main(args):
     else:
         flop_sec = 0.0
     
+    print(f"float point operations: {flops}")
     for i in range(args.num_warmups):
         compfunc(input_tensor, linear)
-    end = time.time()
-    # print("done")
-    duration = end - start
+    device_func.synchronize()
 
-    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
-    logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
-    
-    torch.cuda.empty_cache()
-    torch.cuda.reset_max_memory_allocated()
-    torch.cuda.synchronize()
-
-    # print('Warmup {:.2f} seconds, {:.2f} seconds/iter'.format(duration, duration/float(args.num_warmups)))
-
-    # print("running for {} steps".format(args.num_iterations))
-    start = time.time()
+    # bench
     start_event = device_func.Event(enable_timing=True)
     end_event = device_func.Event(enable_timing=True)
     start_event.record()
 
-    # cupy.cuda.profiler.start()
     for i in range(args.num_iterations):
         compfunc(input_tensor, linear)
 
     end_event.record()
-    device_func.synchronize()  # Wait for the events to be recorded!
-
-    logging.debug(f"Max memory used by tensors = {torch.cuda.max_memory_allocated()} bytes")
-    logging.debug(f"Max memory used by tensors = {torch.cuda.memory_allocated()} bytes")
-    end = time.time()
+    device_func.synchronize()
     elapsed_time = start_event.elapsed_time(end_event) / 1000
-    
-    # print("done")
 
     flop_sec = flops * args.num_iterations / elapsed_time
-
-    duration = end - start
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
     
-    print(f"time.time {duration:.6f} seconds device.time {elapsed_time:.6f}")
-    print(f"FLOPS: {flop_sec}")
+    print(f"device time: {elapsed_time:.6f}")
+    print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
-
+    print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
+    print(f"memory_scaled: {mem_scaled} {mem_unit}")
 
 
 if __name__ == '__main__':
