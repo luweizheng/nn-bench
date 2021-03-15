@@ -9,6 +9,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 from torch.nn.modules.conv import _ConvNd, _ConvTransposeNd
 from torch.nn.modules.pooling import _MaxPoolNd, _AvgPoolNd, _AdaptiveMaxPoolNd, _AdaptiveAvgPoolNd
 from typing import Union
+import logging
 
 
 __all__ = ['module_mem']
@@ -163,11 +164,15 @@ def mem_convnd(module: _ConvNd, input: Tensor, output: Tensor) -> int:
     """MEMs estimation for `torch.nn.modules.conv._ConvNd`"""
 
     # Each output element required K ** 2 memory access of each input channel
+
     input_dma = input.numel()
+    logging.debug(f"input_dma {input_dma}")
 
     # Access weight & bias
     ops_dma = num_params(module)
+    logging.debug(f"ops_dma {ops_dma}")
     output_dma = output.numel()
+    logging.debug(f"output_dma {output_dma}")
 
     return input_dma + ops_dma + output_dma
 

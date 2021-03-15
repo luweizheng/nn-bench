@@ -34,35 +34,39 @@ def module_numel(module: Module, input: Tensor, output: Tensor) -> dict():
     Returns:
         dict: (input -> , params -> , output -> )
     """
-
-    if isinstance(module, nn.Identity):
-        return numel_identity(module, input, output)
-    elif isinstance(module, nn.Flatten):
-        return numel_flatten(module, input, output)
-    elif isinstance(module, nn.Linear):
+    if isinstance(module, nn.Linear):
         return numel_linear(module, input, output)
-    elif isinstance(module, (nn.ReLU, nn.ReLU6)):
-        return numel_relu(module, input, output)
-    elif isinstance(module, (nn.ELU, nn.LeakyReLU)):
-        return numel_act_single_param(module, input, output)
-    elif isinstance(module, nn.Sigmoid):
-        return numel_sigmoid(module, input, output)
-    elif isinstance(module, nn.Tanh):
-        return numel_tanh(module, input, output)
-    elif isinstance(module, _ConvTransposeNd):
-        return numel_convtransposend(module, input, output)
     elif isinstance(module, _ConvNd):
         return numel_convnd(module, input, output)
-    elif isinstance(module, _BatchNorm):
-        return numel_bn(module, input, output)
-    elif isinstance(module, (_MaxPoolNd, _AvgPoolNd)):
-        return numel_pool(module, input, output)
-    elif isinstance(module, (_AdaptiveMaxPoolNd, _AdaptiveAvgPoolNd)):
-        return numel_adaptive_pool(module, input, output)
-    elif isinstance(module, nn.Dropout):
-        return numel_dropout(module, input, output)
-    elif isinstance(module, nn.RNN):
-        return numel_rnn(module, input, output)
+    
+    # if isinstance(module, nn.Identity):
+    #     return numel_identity(module, input, output)
+    # elif isinstance(module, nn.Flatten):
+    #     return numel_flatten(module, input, output)
+    # elif isinstance(module, nn.Linear):
+    #     return numel_linear(module, input, output)
+    # elif isinstance(module, (nn.ReLU, nn.ReLU6)):
+    #     return numel_relu(module, input, output)
+    # elif isinstance(module, (nn.ELU, nn.LeakyReLU)):
+    #     return numel_act_single_param(module, input, output)
+    # elif isinstance(module, nn.Sigmoid):
+    #     return numel_sigmoid(module, input, output)
+    # elif isinstance(module, nn.Tanh):
+    #     return numel_tanh(module, input, output)
+    # elif isinstance(module, _ConvTransposeNd):
+    #     return numel_convtransposend(module, input, output)
+    # elif isinstance(module, _ConvNd):
+    #     return numel_convnd(module, input, output)
+    # elif isinstance(module, _BatchNorm):
+    #     return numel_bn(module, input, output)
+    # elif isinstance(module, (_MaxPoolNd, _AvgPoolNd)):
+    #     return numel_pool(module, input, output)
+    # elif isinstance(module, (_AdaptiveMaxPoolNd, _AdaptiveAvgPoolNd)):
+    #     return numel_adaptive_pool(module, input, output)
+    # elif isinstance(module, nn.Dropout):
+    #     return numel_dropout(module, input, output)
+    # elif isinstance(module, nn.RNN):
+    #     return numel_rnn(module, input, output)
     else:
         warnings.warn(f'Module type not supported: {module.__class__.__name__}')
         return dict(input=0, params=0, output=0)

@@ -15,6 +15,7 @@ class BasicKernelTestCase(unittest.TestCase):
         flops, memory = nnstats.get_flops_mem(conv2d, (2, 3, 224, 224), 0)
 
         self.assertEqual(flops, 470450176)
+        self.assertEqual(memory, 100)
 
     def test_rnn(self):
 

@@ -93,6 +93,12 @@ def main(args):
     # warm up
     conv2d.eval()
     flops, mem = nnstats.get_flops_mem(conv2d, input_tensor_shape)
+
+    if args.dtype == 'float16':
+        mem = mem * 2
+    elif args.dtype == 'float32':
+        mem = mem * 4
+
     if args.compute_type == "forward":
         flops = flops
     elif args.compute_type == "backward":

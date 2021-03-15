@@ -11,11 +11,11 @@ mkdir -p ../output/linear
 
 for dtype in float16
 do
-    for batch_size in 512 1024 #32 64 128 256 512
+    for batch_size in 1024 #32 64 128 256 512
     do
-        for input_size in 10240 32768 #128 256 512 1024
+        for input_size in 32768 #128 256 512 1024 10240
         do
-            for output_size in 10240 32768 #128 256 512 1024
+            for output_size in  32768 # 10240 128 256 512 1024
             do
                 filename=${platform}-${compute_type}-${dtype}-bs_${batch_size}_-input-${input_size}-output-${output_size}
                 echo $filename
