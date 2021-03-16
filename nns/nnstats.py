@@ -163,7 +163,7 @@ def crawl_module(
                     tot_flops = module_flops(module, input[0], output)
                     tot_macs = module_macs(module, input[0], output)
                     tot_mem = module_mem(module, input[0], output)
-                    tot_numel = module_numel(module, input[0], output)
+                    # tot_numel = module_numel(module, input[0], output)
 
                 # Update layer information
                 # RNN has two output tensor

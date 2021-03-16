@@ -166,13 +166,10 @@ def mem_convnd(module: _ConvNd, input: Tensor, output: Tensor) -> int:
     # Each output element required K ** 2 memory access of each input channel
 
     input_dma = input.numel()
-    logging.debug(f"input_dma {input_dma}")
 
     # Access weight & bias
     ops_dma = num_params(module)
-    logging.debug(f"ops_dma {ops_dma}")
     output_dma = output.numel()
-    logging.debug(f"output_dma {output_dma}")
 
     return input_dma + ops_dma + output_dma
 
