@@ -1,0 +1,6 @@
+Running on device npu:0
+flops: 38681946849333.11
+time: 0.273
+flops_scaled: 38.68194684933311 T
+arithemetic intensity: 3082.0129596903726
+THPModule_npu_shutdown success.

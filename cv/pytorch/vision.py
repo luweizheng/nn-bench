@@ -86,7 +86,7 @@ def main(args):
             from apex import amp
             model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level,
                                               loss_scale=None if args.loss_scale == -1 else args.loss_scale,
-                                              combine_grad=True)
+                                              combine_grad=False)
     else:
         optimizer = optim.SGD(model.parameters(), lr=0.01)
         model = model.to(device)
