@@ -18,13 +18,15 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 def get_synthetic_data(input_shape):
     input_tensor = torch.randn(input_shape)
-    label = torch.randint(0, 1000, (input_shape[0],), dtype=torch.int32)
+    label = torch.randint(0, 1000, (input_shape[0],))
     return (input_tensor, label)
 
 
 # train iteration
 def train(input_tensor, label, model, criterion, optimizer, args):
-    label = label.to(torch.int32)
+    # npu only accept int32 label
+    if args.platform == "npu":
+        label = label.to(torch.int32)
     output_tensor = model(input_tensor)
     loss = criterion(output_tensor, label)
     optimizer.zero_grad()
