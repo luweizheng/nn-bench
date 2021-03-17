@@ -80,26 +80,13 @@ def main(args):
 
     
     # define optimizer
-    if args.FusedSGD:
-        from apex.optimizers import NpuFusedSGD
-        optimizer = NpuFusedSGD(model.parameters(), lr=0.01)
-        model = model.to(device)
-        if args.amp:
-            from apex import amp
-            model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level,
-                                              loss_scale=None if args.loss_scale == -1 else args.loss_scale,
-                                              combine_grad=False)
-    else:
-        optimizer = optim.SGD(model.parameters(), lr=0.01)
-        model = model.to(device)
-        if args.amp:
-            from apex import amp
-            model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level,
-                                              loss_scale=None if args.loss_scale == -1 else args.loss_scale)
-
+    optimizer = optim.SGD(model.parameters(), lr=0.01)
+    model = model.to(device)
+    if args.amp:
+        model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level, verbosity=0,
+                                            loss_scale=None if args.loss_scale == -1 else args.loss_scale)
 
     criterion = nn.CrossEntropyLoss().to(device)
-
 
     # warm up
     for i in range(args.num_warmups):
