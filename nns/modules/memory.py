@@ -230,3 +230,29 @@ def mem_adaptive_pool(module: Union[_AdaptiveMaxPoolNd, _AdaptiveAvgPoolNd], inp
     output_dma = output.numel()
 
     return input_dma + output_dma
+
+
+def mem_rnn(module: nn.RNN, input: Tensor, output: Tensor) -> dict:
+    """number of elements estimation for `torch.nn.RNN`"""
+
+    if module.batch_first == True:
+        batch_size = input.shape[0]
+        seq_length = input.shape[1]
+    else:
+        batch_size = input.shape[1]
+        seq_length = input.shape[0]
+
+    # input tensor, include input X and hidden
+    input_numel = input.numel()
+
+    logging.debug(f"input tensor shape {input.shape}, input elements {input.numel()}")
+    # Access weight and bias
+    params = params_size(module)
+
+    logging.debug(f"params {params}")
+
+    # output is a tuple () tensor 
+    logging.debug(f"output tensor shape {output[0].shape}, hidden shape {output[1].shape}")
+    output_numel = output[0].numel() + output[1].numel()
+
+    return dict(input=input_numel, params=params, output=output_numel)

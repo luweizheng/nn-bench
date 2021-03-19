@@ -167,7 +167,7 @@ def crawl_module(
 
                 # Update layer information
                 # RNN has two output tensor
-                if isinstance(module, (torch.nn.RNN)):
+                if isinstance(module, (torch.nn.RNN, torch.nn.GRU)):
                     info[fw_idx]['output_shape'] = (tuple(output[0].shape), tuple(output[1].shape))
                 else:
                     info[fw_idx]['output_shape'] = tuple(output.shape)

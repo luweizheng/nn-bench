@@ -57,7 +57,7 @@ def module_flops(module: Module, input: Tensor, output: Tensor) -> int:
         return flops_adaptive_avgpool(module, input, output)
     elif isinstance(module, nn.Dropout):
         return flops_dropout(module, input, output)
-    elif isinstance(module, nn.RNN):
+    elif isinstance(module, (nn.RNN, nn.GRU)):
         return flops_rnn(module, input, output)
     else:
         warnings.warn(f'Module type not supported: {module.__class__.__name__}')

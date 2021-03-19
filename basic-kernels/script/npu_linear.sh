@@ -9,7 +9,7 @@ platform="npu"
 dtype=float16
 mkdir -p ../output/linear
 
-for compute_type in forward backward
+for compute_type in forward # backward
 do
     for batch_size in 1024 #64 128 256 512
     do

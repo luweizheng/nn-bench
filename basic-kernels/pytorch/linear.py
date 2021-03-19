@@ -91,7 +91,7 @@ def main(args):
     # warm up
     linear.eval()
     flops, mem = nnstats.get_flops_mem(linear, input_tensor_shape)
-    logging.debug(f"mem: {mem}")
+    
     if args.dtype == 'float16':
         mem = mem * 2
     elif args.dtype == 'float32':
@@ -124,8 +124,13 @@ def main(args):
     flop_sec = flops * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
-    arithemetic_intensity = flop_sec / (mem * 2)
+    if mem > 0:
+        arithemetic_intensity = flop_sec / mem
+    else:
+        arithemetic_intensity = 0
     
+    print(f"-----performance----")
+    print(f"  ")
     print(f"device time: {elapsed_time:.6f}")
     print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
