@@ -7,7 +7,7 @@ cd ../pytorch
 
 compute_type="forward"
 platform="gpu"
-mkdir -p ../output/linear
+mkdir -p ../output/${platform}_linear
 
 for dtype in float16
 do
@@ -25,7 +25,7 @@ do
                     --dtype $dtype \
                     --input_tensor_shape $batch_size $input_size \
                     --kernel_shape $input_size $output_size \
-                    1>../output/linear/$filename 2>&1 &
+                    1>../output/${platform}_linear/$filename 2>&1 &
                 wait
             done
         done

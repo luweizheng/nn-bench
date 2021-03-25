@@ -123,12 +123,14 @@ def main(args):
     elapsed_time = start_event.elapsed_time(end_event) / 1000
 
     flop_sec = flops * args.num_iterations / elapsed_time
+    example_per_sec = input_tensor_shape[0] * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
 
     print(f"device time: {elapsed_time:.6f}")
     print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
+    print(f"example_per_sec: {example_per_sec:.3f}")
     print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
     print(f"memory_scaled: {mem_scaled} {mem_unit}")
 
@@ -138,9 +140,7 @@ if __name__ == '__main__':
     AP.add_argument('--platform', type=str, default="npu",
                     help='neural accelerator platform, cuda or npu')
     AP.add_argument('--input_tensor_shape', type=int, nargs='+', default=[64, 3, 224, 224],
-                    help='the shape of the input tensor. Note that it depends on data_format (default NHWC)')
-    AP.add_argument('--data_format', type=str, default='NHWC',
-                    help='choose either channels_last or channels_first')
+                    help='the shape of the input tensor. Note that it depends on data_format (default NCHW)')
     AP.add_argument('--kernel_shape', type=int, nargs='+', default=[
                     3, 3, 3, 64], help='the shape of the conv kernel [filter_height, filter_width, in_channels, out_channels]')
     AP.add_argument('--stride', type=int, default=1, help='the stride')

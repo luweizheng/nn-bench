@@ -4,12 +4,12 @@ import random
 import torch.nn as nn
 
 class Encoder(nn.Module):
-    def __init__(self, input_size, embed_size, hid_dim, dropout, seed=0):
+    def __init__(self, input_size, embed_size, hidden_size, dropout, seed=0):
         super().__init__()
 
-        self.hid_dim = hid_dim
+        self.hidden_size = hidden_size
         self.embedding = nn.Embedding(input_size, embed_size)
-        self.rnn = nn.GRU(embed_size, hid_dim)
+        self.rnn = nn.GRU(embed_size, hidden_size)
         self.dropout = nn.Dropout(dropout)
 
         self.seed = seed
@@ -18,23 +18,23 @@ class Encoder(nn.Module):
     def forward(self, src):
         embedded = self.embedding(src)
 
-        if self.training:
-            embedded = self.dropout(embedded)
+        # if self.training:
+        #     embedded = self.dropout(embedded)
 
         outputs, hidden = self.rnn(embedded)
 
         return hidden
 
 class Decoder(nn.Module):
-    def __init__(self, output_dim, embed_size, hid_dim, dropout, seed=0):
+    def __init__(self, output_size, embed_size, hidden_size, dropout, seed=0):
         super().__init__()
 
-        self.hid_dim = hid_dim
-        self.output_dim = output_dim
-        self.embedding = nn.Embedding(output_dim, embed_size)
-        self.rnn = nn.GRU(embed_size + hid_dim, hid_dim)
-        self.fc_out = nn.Linear(embed_size + hid_dim * 2, output_dim)
-        self.dropout = nn.Dropout(dropout)
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.embedding = nn.Embedding(output_size, embed_size)
+        self.rnn = nn.GRU(embed_size + hidden_size, hidden_size)
+        self.fc_out = nn.Linear(embed_size + hidden_size * 2, output_size)
+        # self.dropout = nn.Dropout(dropout)
 
         self.seed = seed
         self.prob = dropout
@@ -43,8 +43,8 @@ class Decoder(nn.Module):
         input = input.unsqueeze(0)
         embedded = self.embedding(input)
 
-        if self.training:
-            embedded = self.dropout(embedded)
+        # if self.training:
+        #     embedded = self.dropout(embedded)
 
         emb_con = torch.cat((embedded, context), dim=2)
         output, hidden = self.rnn(emb_con, hidden)
@@ -63,7 +63,7 @@ class Seq2Seq(nn.Module):
         self.decoder = decoder
         self.device = device
 
-        assert encoder.hid_dim == decoder.hid_dim, \
+        assert encoder.hidden_size == decoder.hidden_size, \
             "Hidden dimensions of encoder and decoder must be equal!"
 
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
@@ -71,7 +71,7 @@ class Seq2Seq(nn.Module):
 
         trg_len = trg.shape[0]
 
-        trg_vocab_size = self.decoder.output_dim
+        trg_vocab_size = self.decoder.output_size
 
         # tensor to store decoder outputs
         outputs = torch.zeros(trg_len, batch_size, trg_vocab_size).to(self.device)

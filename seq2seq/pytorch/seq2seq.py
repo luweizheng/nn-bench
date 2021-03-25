@@ -26,25 +26,33 @@ def get_synthetic_data(args):
 
 # train iteration
 def train(src, trg, model, criterion, optimizer, device, args):
+    model.to(device)
+    src.to(device)
+    trg.to(device)
     model.train()
     output = model(src, trg).to(device)
     # npu only accept int32 label
     if args.platform == "npu":
         trg = trg.to(torch.int32)
 
+    print(f"before view output shape {output.shape}")
     output_dim = output.shape[-1]
 
     output = output[1:].view(-1, output_dim)
     trg = trg[1:].view(-1)
 
+    print(f"after view output shape {output.shape}")
+    print(f"trg shape {trg.shape}")
     loss = criterion(output, trg)
+    print(f"loss device {loss.device}")
+    print(f"output device {loss.device}")
     
     if args.amp:
         with amp.scale_loss(loss, optimizer) as scaled_loss:
             scaled_loss.backward()
     else:
         loss.backward()
-    torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP)
     optimizer.step()
 
     return loss
@@ -113,7 +121,7 @@ def main(args):
         if args.compute_type == "forward":
             predicted = forward(src, trg, model, args)
         elif args.compute_type == "backward":
-            loss = train(input_tensor, label, model, criterion, optimizer, args)
+            loss = train(src, trg, model, criterion, optimizer, device, args)
     
     # end time
     end_event.record()
@@ -143,8 +151,7 @@ if __name__ == '__main__':
                         help='use amp during prof')
     parser.add_argument('--loss-scale', default=64.0, type=float,
                         help='loss scale using in amp, default 64.0, -1 means dynamic')
-    parser.add_argument('--opt-level', default='O2', type=str,
-                        help='opt-level using in amp, default O2')
+    parser.add_argument('--opt-level', default='O2', type=str, help='opt-level using in amp, default O2')
     parser.add_argument('--dtype', type=str, default='float32', help='the data type')
     parser.add_argument('--num_iterations', type=int, default=100, help='the number of iterations')
     parser.add_argument('--num_warmups', type=int, default=10, help='number of warmup steps')
