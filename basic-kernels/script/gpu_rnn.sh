@@ -1,15 +1,19 @@
 #!/bin/bash
 
-# set npu environments
-source npu_env.sh
+#SBATCH --job-name=nnbench
+#SBATCH --nodes=1
+#SBATCH --partition=tesla
+#SBATCH --gpus=1
+
+# set up environment
+source activate torch1.5
 
 cd ../pytorch
 
-platform="npu"
 dtype="float16"
 compute_type="forward"
+platform="gpu"
 mkdir -p ../output/${platform}_rnn
-
 
 for batch_size in 1024 #64 128 256 512
 do

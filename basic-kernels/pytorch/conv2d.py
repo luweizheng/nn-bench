@@ -105,7 +105,6 @@ def main(args):
         flops = flops * 3
     else:
         flop_sec = 0.0
-    print(f"float point operations: {flops}")
     for i in range(args.num_warmups):
         compfunc(input_tensor, conv2d)
     device_func.synchronize()
@@ -127,6 +126,8 @@ def main(args):
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
 
+    print(f"-----performance----")
+    print(f"\n")
     print(f"device time: {elapsed_time:.6f}")
     print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
