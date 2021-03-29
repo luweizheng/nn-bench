@@ -87,10 +87,17 @@ def main(args):
     start = time.time()
 
     flops, mem = nnstats.get_flops_mem(myRNN, input_tensor_shape)
+
+    if args.dtype == 'float16':
+        mem = mem * 2
+    elif args.dtype == 'float32':
+        mem = mem * 4
+    
     print(f"float point operations: {flops}")
     for i in range(args.num_warmups):
         compfunc(input_tensor, myRNN)
     device_func.synchronize()
+    # torch.cuda.reset_max_memory_allocated()
     end = time.time()
     duration = end-start
     
@@ -102,6 +109,7 @@ def main(args):
         compfunc(input_tensor, myRNN)
         
     end_event.record()
+    # max_mem = torch.cuda.max_memory_allocated()
     device_func.synchronize()
         
     end = time.time()
@@ -112,6 +120,7 @@ def main(args):
     duration = end - start
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
+    # max_mem_scaled, max_mem_unit = nnutils.unit_scale(max_mem)
     if mem > 0:
         arithemetic_intensity = flop_sec / mem
     else:

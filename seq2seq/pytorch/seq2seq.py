@@ -44,6 +44,7 @@ def train(src, trg, model, criterion, optimizer, device, args):
     print(f"after view output shape {output.shape}")
     print(f"after view output dtype {output.dtype}")
     print(f"trg shape {trg.shape}")
+    print(f"output dtype {output.dtype}")
     print(f"trg dtype {trg.dtype}")
     loss = criterion(output, trg)
     print(f"loss device {loss.device}")
