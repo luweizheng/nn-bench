@@ -53,6 +53,8 @@ def module_mem(module: Module, input: Tensor, output: Tensor) -> int:
         return mem_adaptive_pool(module, input, output)
     elif isinstance(module, nn.Dropout):
         return mem_dropout(module, input, output)
+    # elif isinstance(module, nn.RNN):
+    #     return mem_rnn(module, input, output)
     else:
         warnings.warn(f'Module type not supported: {module.__class__.__name__}')
         return 0
@@ -233,7 +235,7 @@ def mem_adaptive_pool(module: Union[_AdaptiveMaxPoolNd, _AdaptiveAvgPoolNd], inp
 
 
 def mem_rnn(module: nn.RNN, input: Tensor, output: Tensor) -> dict:
-    """number of elements estimation for `torch.nn.RNN`"""
+    """number of memory estimation for `torch.nn.RNN`"""
 
     if module.batch_first == True:
         batch_size = input.shape[0]
@@ -245,14 +247,11 @@ def mem_rnn(module: nn.RNN, input: Tensor, output: Tensor) -> dict:
     # input tensor, include input X and hidden
     input_numel = input.numel()
 
-    logging.debug(f"input tensor shape {input.shape}, input elements {input.numel()}")
+    logging.debug(f"input tensor shape {input.shape}")
+    logging.debug(f"output0 tensor shape {input[0].shape}, output1 elements {output[1].shape}")
     # Access weight and bias
-    params = params_size(module)
+    params = num_params(module)
 
-    logging.debug(f"params {params}")
-
-    # output is a tuple () tensor 
-    logging.debug(f"output tensor shape {output[0].shape}, hidden shape {output[1].shape}")
-    output_numel = output[0].numel() + output[1].numel()
-
-    return dict(input=input_numel, params=params, output=output_numel)
+    output_dma = output[0].numel() + output[1].numel()
+    input_dma = output_dma
+    return module.num_layers * seq_length * (input_dma + output_dma + params)

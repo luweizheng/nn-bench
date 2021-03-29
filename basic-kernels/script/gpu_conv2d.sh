@@ -6,7 +6,7 @@ cd ../pytorch
 
 dtype="float16"
 compute_type="forward"
-platform="npu"
+platform="gpu"
 mkdir -p ../output/${platform}_conv2d
 
 for batch_size in 128 1024

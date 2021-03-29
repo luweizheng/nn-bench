@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # set up environment
-source activate torch16
+source activate torch1.5
 
 cd ../pytorch
 
