@@ -11,7 +11,7 @@ compute_type="forward"
 mkdir -p ../output/${platform}_rnn
 
 
-for batch_size in 1024 #64 128 256 512
+for batch_size in 64 #64 128 256 512
 do
     for seq_len in 128 #512 2048 16384 32768 #128 256 512 1024 32768
     do

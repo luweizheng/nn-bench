@@ -10,7 +10,7 @@ class Encoder(nn.Module):
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(input_size, embed_size)
         self.rnn = nn.GRU(embed_size, hidden_size)
-        self.dropout = nn.Dropout(dropout)
+        # self.dropout = nn.Dropout(dropout)
 
         self.seed = seed
         self.prob = dropout
@@ -48,8 +48,7 @@ class Decoder(nn.Module):
 
         emb_con = torch.cat((embedded, context), dim=2)
         output, hidden = self.rnn(emb_con, hidden)
-        output = torch.cat((embedded.squeeze(0), hidden.squeeze(0), context.squeeze(0)),
-                           dim=1)
+        output = torch.cat((embedded.squeeze(0), hidden.squeeze(0), context.squeeze(0)), dim=1)
         prediction = self.fc_out(output)
 
         return prediction, hidden
