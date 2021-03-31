@@ -61,11 +61,11 @@ def main(args):
 
     # init rnn kernel
     if args.rnn_type == 'lstm':
-        myRNN = nn.LSTM(input_size, hidden_size, batch_first=True)
+        myRNN = nn.LSTM(input_size, hidden_size)
     elif args.rnn_type == 'rnn':
         myRNN = nn.RNN(input_size, hidden_size)
     elif args.rnn_type == 'gru':
-        myRNN = nn.GRU(input_size, hidden_size, batch_first=True)
+        myRNN = nn.GRU(input_size, hidden_size)
     else:
         raise ValueError("Error of input cell_type, please choose one from [rnn, lstm, gru]")
 
@@ -73,8 +73,6 @@ def main(args):
     if args.dtype == 'float16':
         myRNN = myRNN.half()
     
-   
-    # resul ops
     if args.compute_type=="forward":
         compfunc = run_forward  
     elif args.compute_type=="backward":
@@ -86,7 +84,7 @@ def main(args):
     
     start = time.time()
 
-    flops, mem = nnstats.get_flops_mem(myRNN, input_tensor_shape)
+    flops, mem, params = nnstats.get_flops_mem(myRNN, input_tensor_shape)
 
     if args.dtype == 'float16':
         mem = mem * 2
@@ -116,6 +114,7 @@ def main(args):
     elapsed_time = start_event.elapsed_time(end_event) / 1000
 
     flop_sec = flops * args.num_iterations / elapsed_time
+    example_per_sec = input_tensor_shape[1] * args.num_iterations / elapsed_time
 
     duration = end - start
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
@@ -131,7 +130,9 @@ def main(args):
     print(f"device time: {elapsed_time:.6f}")
     print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
+    print(f"example_per_sec: {example_per_sec:.3f}")
     print(f"arithemetic intensity: {arithemetic_intensity}")
+    print(f"parameter size: {params}")
     print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
     print(f"memory_scaled: {mem_scaled} {mem_unit}")
 

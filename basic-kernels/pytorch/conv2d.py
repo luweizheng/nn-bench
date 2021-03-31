@@ -92,7 +92,7 @@ def main(args):
 
     # warm up
     conv2d.eval()
-    flops, mem = nnstats.get_flops_mem(conv2d, input_tensor_shape)
+    flops, mem, params = nnstats.get_flops_mem(conv2d, input_tensor_shape)
 
     if args.dtype == 'float16':
         mem = mem * 2
@@ -137,6 +137,7 @@ def main(args):
     print(f"memory: {mem}")
     print(f"example_per_sec: {example_per_sec:.3f}")
     print(f"arithemetic intensity: {arithemetic_intensity}")
+    print(f"parameter size: {params}")
     print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
     print(f"memory_scaled: {mem_scaled} {mem_unit}")
 
