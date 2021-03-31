@@ -116,15 +116,14 @@ def flops_mem(module_info):
     """
     flops = 0
     dma = 0
+    params = 0
     for layer in module_info['layers']:
         # logging.debug(layer)
         flops += layer['flops']
         dma += layer['mem']
-        # numel += (layer['elements']['input'] + layer['elements']['params'])
-        # if layer['depth'] == 0:
-        #     numel += layer['elements']['output']
+        params += layer['param_size']
 
-    return (flops, dma)
+    return (flops, dma, params)
 
 def format_info(
     module_info: Dict[str, Any],

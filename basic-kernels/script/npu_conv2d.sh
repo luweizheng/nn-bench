@@ -19,7 +19,7 @@ do
             do
                 for filter_size in 1 3 5 7
                 do  
-                    filename=${compute_type}-${dtype}-bs_${batch_size}-input_${input_size}-inchannel_${in_channels}-outchannel_${out_channels}-filtersize_${filter_size}
+                    filename=bs_${batch_size}-input_${input_size}-inchannel_${in_channels}-outchannel_${out_channels}-filtersize_${filter_size}
                     echo $filename
                     
                     if [ -e ../output/${platform}_conv2d/${filename} ]

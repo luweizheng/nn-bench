@@ -21,7 +21,7 @@ do
     do
         for output_size in 512 1024 2048 4096 8192 16384 32768 65536
         do
-            filename=${compute_type}-${dtype}-bs_${batch_size}-input_${input_size}-output_${output_size}
+            filename=bs_${batch_size}-input_${input_size}-output_${output_size}
             echo $filename
 
             if [ -e ../output/${platform}_linear/${filename} ]
