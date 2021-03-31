@@ -23,7 +23,7 @@ do
         do
             for hidden_size in 512 1024 2048 4096 8192 16384
             do
-                filename=${compute_type}-${dtype}-bs_${batch_size}_-seqlen-${seq_len}-embedingsize-${embeding_size}-hiddensize_${hidden_size}
+                filename=bs_${batch_size}_-seqlen-${seq_len}-embedingsize-${embeding_size}-hiddensize_${hidden_size}
                 echo $filename
 
                 if [ -e ../output/${platform}_rnn/${filename} ]
