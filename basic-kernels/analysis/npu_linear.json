@@ -1,1 +1,0 @@
-{"labels": ["npu-forward-float16-bs_1024_-input-32768-output-32768"], "dtype": ["float16"], "batch_size": [1024], "input_size": [32768], "output_size": [32768], "device_time": [1.160466], "flops": [189494855061122.5], "memory": [2281766912.0], "arithemetic_intensity": [41523.70999521324], "flops_scale": ["189.4948550611225 T\n"]}
