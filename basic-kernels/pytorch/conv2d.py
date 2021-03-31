@@ -125,6 +125,10 @@ def main(args):
     example_per_sec = input_tensor_shape[0] * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     mem_scaled, mem_unit = nnutils.unit_scale(mem)
+    if mem > 0:
+        arithemetic_intensity = flop_sec / mem
+    else:
+        arithemetic_intensity = 0
 
     print(f"-----performance----")
     print(f"\n")
@@ -132,6 +136,7 @@ def main(args):
     print(f"flops: {flop_sec}")
     print(f"memory: {mem}")
     print(f"example_per_sec: {example_per_sec:.3f}")
+    print(f"arithemetic intensity: {arithemetic_intensity}")
     print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
     print(f"memory_scaled: {mem_scaled} {mem_unit}")
 
