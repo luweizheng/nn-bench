@@ -14,7 +14,7 @@ compute_type="forward"
 platform="gpu"
 mkdir -p ../output/${platform}_conv2d
 
-for batch_size in 128 1024
+for batch_size in 128 512 1024
 do
     for input_size in 224 448
     do
