@@ -18,8 +18,8 @@ class Encoder(nn.Module):
     def forward(self, src):
         embedded = self.embedding(src)
 
-        # if self.training:
-        #     embedded = self.dropout(embedded)
+        if self.training:
+            embedded, _, _ = torch.dropoutV2(embedded, self.seed, p=self.prob)
 
         outputs, hidden = self.rnn(embedded)
 
@@ -43,8 +43,8 @@ class Decoder(nn.Module):
         input = input.unsqueeze(0)
         embedded = self.embedding(input)
 
-        # if self.training:
-        #     embedded = self.dropout(embedded)
+        if self.training:
+            embedded, _, _ = torch.dropoutV2(embedded, self.seed, p=self.prob)
 
         emb_con = torch.cat((embedded, context), dim=2)
         output, hidden = self.rnn(emb_con, hidden)

@@ -8,9 +8,9 @@ import sys
 import os
 import random
 
-sys.path.append(os.path.abspath("../../nns"))
-import nnutils
-import nnstats
+# sys.path.append(os.path.abspath("../../nns"))
+# import nnutils
+# import nnstats
 from model import Encoder
 from model import Decoder
 from model import Seq2Seq
@@ -19,8 +19,8 @@ MAX = 2147483647
 CLIP = 1
 
 def get_synthetic_data(args):
-    src = torch.randint(0, args.input_size, size=(args.fix_length, args.batch_size), dtype=torch.int32)
-    trg = torch.randint(0, args.output_size, size=(args.fix_length, args.batch_size), dtype=torch.int32)
+    src = torch.randint(0, args.input_size, size=(args.fix_length, args.batch_size), dtype=torch.int64)
+    trg = torch.randint(0, args.output_size, size=(args.fix_length, args.batch_size), dtype=torch.int64)
     return (src, trg)
 
 
@@ -35,20 +35,12 @@ def train(src, trg, model, criterion, optimizer, device, args):
     if args.platform == "npu":
         trg = trg.to(torch.int32)
 
-    print(f"before view output shape {output.shape}")
     output_dim = output.shape[-1]
 
     output = output[1:].view(-1, output_dim)
     trg = trg[1:].view(-1)
 
-    print(f"after view output shape {output.shape}")
-    print(f"after view output dtype {output.dtype}")
-    print(f"trg shape {trg.shape}")
-    print(f"output dtype {output.dtype}")
-    print(f"trg dtype {trg.dtype}")
     loss = criterion(output, trg)
-    print(f"loss device {loss.device}")
-    print(f"output device {loss.device}")
     
     if args.amp:
         with amp.scale_loss(loss, optimizer) as scaled_loss:
@@ -102,7 +94,10 @@ def main(args):
     criterion = nn.CrossEntropyLoss().to(device)
     model = model.to(device)
     if args.amp:
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level, loss_scale=args.loss_scale)
+        model, optimizer = amp.initialize(model, optimizer, 
+                opt_level=args.opt_level, 
+                loss_scale=args.loss_scale
+                verbosity=0)
 
     criterion = nn.CrossEntropyLoss().to(device)
 
