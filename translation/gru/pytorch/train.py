@@ -26,9 +26,6 @@ def get_synthetic_data(args):
 
 # train iteration
 def train(src, trg, model, criterion, optimizer, device, args):
-    model.to(device)
-    src.to(device)
-    trg.to(device)
     model.train()
     output = model(src, trg).to(device)
     # npu only accept int32 label
@@ -67,10 +64,10 @@ def gen_seeds(num):
 def main(args):
     
     if args.platform == "gpu":
-        device = torch.device('cuda:0')
+        device = torch.device('cuda:' + args.device_id)
         device_func = torch.cuda
     elif args.platform == "npu":
-        device = torch.device('npu:0')
+        device = torch.device('npu:' + args.device_id)
         device_func = torch.npu
     else:
         device = torch.device('cpu')
@@ -155,6 +152,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Seq2Seq')
     parser.add_argument('--platform', type=str, default='npu',
                         help='set which type of device you want to use. gpu/npu')
+    parser.add_argument('--device-id', type=str, default='0',
+                        help='set device id')
     parser.add_argument('--amp', default=False, action='store_true',
                         help='use amp during prof')
     parser.add_argument('--loss-scale', default=64.0, type=float,

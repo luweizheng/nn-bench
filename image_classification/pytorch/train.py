@@ -24,6 +24,7 @@ def get_synthetic_data(input_shape):
 
 # train iteration
 def train(input_tensor, label, model, criterion, optimizer, args):
+    model.train()
     # npu only accept int32 label
     if args.platform == "npu":
         label = label.to(torch.int32)
@@ -46,10 +47,10 @@ def forward(input_tensor, model, args):
 def main(args):
     
     if args.platform == "gpu":
-        device = torch.device('cuda:0')
+        device = torch.device('cuda:' + args.device_id)
         device_func = torch.cuda
     elif args.platform == "npu":
-        device = torch.device('npu:0')
+        device = torch.device('npu:' + args.device_id)
         device_func = torch.npu
     else:
         device = torch.device('cpu')
@@ -61,8 +62,7 @@ def main(args):
     label = label.to(device)
 
     model = torchvision.models.__dict__[args.arch](args.pretrained)
-    # model.eval()
-    flops, mem = nnstats.get_flops_mem(model, input_tensor_shape)
+    flops, mem, params = nnstats.get_flops_mem(model, input_tensor_shape)
     
     if args.dtype == 'float16':
         model = model.half()
@@ -114,12 +114,15 @@ def main(args):
     elapsed_time = start_event.elapsed_time(end_event) / 1000
     flop_sec = flops * args.num_iterations / elapsed_time
     arithemetic_intensity = flop_sec / mem
+    example_per_sec = input_tensor_shape[0] * args.num_iterations / elapsed_time
     flop_sec_scaled, flop_sec_unit = nnutils.unit_scale(flop_sec)
     
     print(f"flops: {flop_sec}")
     print(f"time: {elapsed_time:.3f}")
     print(f"flops_scaled: {flop_sec_scaled} {flop_sec_unit}")
     print(f"arithemetic intensity: {arithemetic_intensity}")
+    print(f"example_per_sec: {example_per_sec:.3f}")
+    print(f"params: {params}")
 
 
     # 4. 执行forward+profiling
@@ -132,14 +135,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='ResNet')
     parser.add_argument('--platform', type=str, default='gpu',
                         help='set which type of device you want to use. gpu/npu')
+    parser.add_argument('--device-id', type=str, default='0',
+                        help='set device id')
     parser.add_argument('--amp', default=False, action='store_true',
                         help='use amp during prof')
     parser.add_argument('--loss-scale', default=64.0, type=float,
                         help='loss scale using in amp, default 64.0, -1 means dynamic')
     parser.add_argument('--opt-level', default='O2', type=str,
                         help='opt-level using in amp, default O2')
-    parser.add_argument('--FusedSGD', default=False, action='store_true',
-                        help='use FusedSGD during prof')
     parser.add_argument('--dtype', type=str, default='float32',
                     help='the data type')
     parser.add_argument('--num_iterations', type=int, default=100,
