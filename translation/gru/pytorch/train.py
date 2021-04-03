@@ -96,7 +96,7 @@ def main(args):
     if args.amp:
         model, optimizer = amp.initialize(model, optimizer, 
                 opt_level=args.opt_level, 
-                loss_scale=args.loss_scale
+                loss_scale=args.loss_scale,
                 verbosity=0)
 
     criterion = nn.CrossEntropyLoss().to(device)

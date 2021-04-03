@@ -1,4 +1,5 @@
 fusion_result.json
 ge_check_op.json
 kernel_meta/
+output
 __pycache__/
