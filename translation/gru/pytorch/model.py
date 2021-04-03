@@ -4,13 +4,14 @@ import random
 import torch.nn as nn
 
 class Encoder(nn.Module):
-    def __init__(self, input_size, embed_size, hidden_size, dropout, seed=0):
+    def __init__(self, input_size, embed_size, hidden_size, dropout, platform, seed=0):
         super().__init__()
 
         self.hidden_size = hidden_size
         self.embedding = nn.Embedding(input_size, embed_size)
         self.rnn = nn.GRU(embed_size, hidden_size)
-        # self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
+        self.platform = platform
 
         self.seed = seed
         self.prob = dropout
@@ -19,14 +20,17 @@ class Encoder(nn.Module):
         embedded = self.embedding(src)
 
         if self.training:
-            embedded, _, _ = torch.dropoutV2(embedded, self.seed, p=self.prob)
+            if self.platform == "npu":
+                embedded, _, _ = torch.dropoutV2(embedded, self.seed, p=self.prob)
+            elif self.platform == "gpu":
+                embedded = self.dropout(embedded)
 
         outputs, hidden = self.rnn(embedded)
 
         return hidden
 
 class Decoder(nn.Module):
-    def __init__(self, output_size, embed_size, hidden_size, dropout, seed=0):
+    def __init__(self, output_size, embed_size, hidden_size, dropout, platform, seed=0):
         super().__init__()
 
         self.hidden_size = hidden_size
@@ -34,7 +38,8 @@ class Decoder(nn.Module):
         self.embedding = nn.Embedding(output_size, embed_size)
         self.rnn = nn.GRU(embed_size + hidden_size, hidden_size)
         self.fc_out = nn.Linear(embed_size + hidden_size * 2, output_size)
-        # self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
+        self.platform = platform
 
         self.seed = seed
         self.prob = dropout
@@ -42,9 +47,12 @@ class Decoder(nn.Module):
     def forward(self, input, hidden, context):
         input = input.unsqueeze(0)
         embedded = self.embedding(input)
-
+        
         if self.training:
-            embedded, _, _ = torch.dropoutV2(embedded, self.seed, p=self.prob)
+            if self.platform == "npu":
+                embedded, _, _ = torch.dropoutV2(embedded, self.seed, p=self.prob)
+            elif self.platform == "gpu":
+                embedded = self.dropout(embedded)
 
         emb_con = torch.cat((embedded, context), dim=2)
         output, hidden = self.rnn(emb_con, hidden)

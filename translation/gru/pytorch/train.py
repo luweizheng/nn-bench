@@ -82,8 +82,18 @@ def main(args):
 
     seed_init = gen_seeds(32 * 1024 * 12).float().to(device)
 
-    enc = Encoder(args.input_size, args.embed_size, args.hidden_size, 0.5, seed=seed_init).to(device)
-    dec = Decoder(args.output_size, args.embed_size, args.hidden_size, 0.5, seed=seed_init).to(device)
+    enc = Encoder(args.input_size, 
+                args.embed_size, 
+                args.hidden_size, 
+                0.5, 
+                platform=args.platform, 
+                seed=seed_init).to(device)
+    dec = Decoder(args.output_size, 
+                args.embed_size, 
+                args.hidden_size, 
+                0.5, 
+                platform=args.platform, 
+                seed=seed_init).to(device)
 
     model = Seq2Seq(enc, dec, device).to(device)
     model.apply(init_weights)
