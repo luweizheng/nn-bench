@@ -1,14 +1,7 @@
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree. An additional grant of patent rights
-# can be found in the PATENTS file in the same directory.
-
 import importlib
 import os
 
-from .incremental_decoder import IncrementalDecoder  # noqa: F401
+from .incremental_decoder import IncrementalDecoder 
 
 MODEL_REGISTRY = {}
 ARCH_MODEL_REGISTRY = {}

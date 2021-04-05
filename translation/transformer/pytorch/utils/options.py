@@ -1,25 +1,3 @@
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree. An additional grant of patent rights
-# can be found in the PATENTS file in the same directory.
-#
-#-------------------------------------------------------------------------
-#
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 import argparse
 
 import torch
@@ -31,7 +9,7 @@ from optim.lr_scheduler import LR_SCHEDULER_REGISTRY
 
 
 def get_training_parser():
-    parser = get_parser('Trainer')
+    parser = get_parser('Transformer wmt translation')
     add_dataset_args(parser, train=True, gen=True)
     add_distributed_training_args(parser)
     add_model_args(parser)
@@ -114,7 +92,7 @@ def parse_args_and_arch(parser, input_args=None, parse_known=False):
 
 def get_parser(desc):
     parser = argparse.ArgumentParser(
-        description='Facebook AI Research Sequence-to-Sequence Toolkit -- ' + desc)
+        description='Sequence-to-Sequence Toolkit -- ' + desc)
     parser.add_argument('--log-interval', type=int, default=1000, metavar='N',
                         help='print aggregated stats and flush json log every N iteration')
     parser.add_argument('--seed', default=1, type=int, metavar='N',
@@ -174,9 +152,15 @@ def add_dataset_args(parser, train=False, gen=False):
 
 def add_distributed_training_args(parser):
     group = parser.add_argument_group('Distributed training')
+    group.add_argument('--platform', type=str, default='npu',
+                        help='set which type of device you want to use. gpu/npu')
+    group.add_argument('--num-iterations', type=int, default=100,
+                    help='the number of iterations')
+    group.add_argument('--num-warmups', type=int, default=10,
+                    help='number of warmup steps')
     group.add_argument('--distributed-world-size', type=int, metavar='N',
                        default=8,
-                       help='total number of NPUs across all nodes (default: all visible NPUs)')
+                       help='total number of devices across all nodes (default: all visible devices)')
     group.add_argument('--distributed-rank', default=0, type=int,
                         help='node rank for distributed training')
     group.add_argument('--dist-backend', default='hccl', type=str,
@@ -186,7 +170,7 @@ def add_distributed_training_args(parser):
     group.add_argument('--port', default='1234', type=str,
                         help='ip port')
     group.add_argument('--device-id', default=0, type=int,
-                        help='npu id to use.')
+                        help='device id to use.')
     return group
 
 

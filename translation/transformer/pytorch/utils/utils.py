@@ -1,26 +1,3 @@
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree. An additional grant of patent rights
-# can be found in the PATENTS file in the same directory.
-#
-#--------------------------------------------------------------------
-#
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from collections import defaultdict, OrderedDict
 import logging
 import os
@@ -93,24 +70,23 @@ def load_model_state(filename, model):
 
 
 
-def move_to_npu(args,sample):
+def move_to_device(args, sample):
     if len(sample) == 0:
         return {}
-    loc = 'npu:{}'.format(args.device_id)
-    def _move_to_npu(args,maybe_tensor):
+    def _move_to_device(args, maybe_tensor):
         if torch.is_tensor(maybe_tensor):
-            return maybe_tensor.to(loc)
+            return maybe_tensor.to(args.device)
         elif isinstance(maybe_tensor, dict):
             return {
-                key: _move_to_npu(args,value)
+                key: _move_to_device(args, value)
                 for key, value in maybe_tensor.items()
             }
         elif isinstance(maybe_tensor, list):
-            return [_move_to_npu(args,x) for x in maybe_tensor]
+            return [_move_to_device(args,x) for x in maybe_tensor]
         else:
             return maybe_tensor
 
-    return _move_to_npu(args,sample)
+    return _move_to_device(args,sample)
 
 
 

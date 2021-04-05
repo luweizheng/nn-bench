@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name=gru_nnbench
+#SBATCH --job-name=image_nnbench
 #SBATCH --nodes=1
 #SBATCH --partition=tesla
 #SBATCH --gpus=1

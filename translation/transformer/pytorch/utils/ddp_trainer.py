@@ -1,27 +1,3 @@
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree. An additional grant of patent rights
-# can be found in the PATENTS file in the same directory.
-#
-# -------------------------------------------------------------------------
-#
-# Copyright (c) 2019, NVIDIA CORPORATION. All rights reserved.
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-
 from collections import defaultdict, OrderedDict
 import contextlib
 from itertools import chain
@@ -55,9 +31,8 @@ class DDPTrainer(object):
     def __init__(self, args, model):
 
         self.args = args
-        loc = 'npu:{}'.format(self.args.device_id)
-        self.model = model.to(loc)
-        self.criterion = CRITERION_REGISTRY[args.criterion](self.args).to(loc)
+        self.model = model.to(args.device)
+        self.criterion = CRITERION_REGISTRY[args.criterion](self.args).to(args.device)
         self.optimizer = optim.build_optimizer(self.args, self.model.parameters())
         self.lr_scheduler = lr_scheduler.build_lr_scheduler(self.args, self.optimizer)
 
@@ -71,7 +46,8 @@ class DDPTrainer(object):
                 # min_loss_scale = 0.0001,
                 loss_scale=8,
                 cast_model_outputs=torch.float16,
-                combine_grad=True
+                combine_grad=True,
+                verbosity=0
             )
 
         if self.args.distributed_world_size > 1:
@@ -138,6 +114,7 @@ class DDPTrainer(object):
 
         self.model.train()
         # forward and backward pass
+        # move data to deivce
         sample, sample_size = self._prepare_sample(sample)
 
         loss, oom_fwd = self._forward(sample)
@@ -226,6 +203,11 @@ class DDPTrainer(object):
             if sample is not None:
                 # calculate loss and sample size
                 # src_tokens, src_lengths, prev_output_tokens
+                # npu only accept int32 tensors
+                if self.args.platform == "npu":
+                    sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int32)
+                    sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int32)
+                    sample['target'] = sample['target'].to(torch.int32)
                 logits, _ = self.model(sample['net_input']['src_tokens'], sample['net_input']['src_lengths'], sample['net_input']['prev_output_tokens'])
                 target = sample['target']
                 probs = F.log_softmax(logits, dim=-1, dtype=torch.float32)
@@ -337,4 +319,4 @@ class DDPTrainer(object):
     def _prepare_sample(self, sample):
         if sample is None or len(sample) == 0:
             return None, 0
-        return utils.move_to_npu(self.args, sample), sample['ntokens']
+        return utils.move_to_device(self.args, sample), sample['ntokens']
