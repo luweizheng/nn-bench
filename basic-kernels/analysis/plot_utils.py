@@ -148,7 +148,7 @@ def speedup_params(a_labels, a_perf, b_labels, b_perf, b_params, legend_box=(), 
     ax.plot([left, right], [1, 1], 'k-', color='orange')
     if lim != []:
         ax.set_ylim(lim)
-    ax.set_xlabel('Memory', fontsize=20)
+    ax.set_xlabel('Params', fontsize=20)
     ax.set_ylabel('Speedups', fontsize=20)
     ax.set_title(title, fontsize=18)
     return fig
