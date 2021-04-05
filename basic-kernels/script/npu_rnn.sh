@@ -15,11 +15,11 @@ for batch_size in 64 128 256 512
 do
     for seq_len in 128 256 512
     do
-        for embeding_size in 512 1024 2048 4096 8192 16384
+        for embeding_size in 512 2048 8192
         do
-            for hidden_size in 512 1024 2048 4096 8192 16384
+            for hidden_size in 512 2048 8192
             do
-                filename=bs_${batch_size}_-seqlen-${seq_len}-embedingsize-${embeding_size}-hiddensize_${hidden_size}
+                filename=bs_${batch_size}-seqlen_${seq_len}-embedingsize_${embeding_size}-hiddensize_${hidden_size}
                 echo $filename
 
                 if [ -e ../output/${platform}_rnn/${filename} ]
