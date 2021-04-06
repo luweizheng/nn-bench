@@ -147,11 +147,13 @@ class MultiheadAttention(nn.Module):
     See "Attention Is All You Need" for more details.
     """
 
-    def __init__(self, embed_dim, num_heads, dropout=0., bias=False, seed=0):
+    def __init__(self, embed_dim, num_heads, platform, dropout=0., bias=False, seed=0):
         super().__init__()
+        self.platform = platform
         self.embed_dim = embed_dim
         self.num_heads = num_heads
-        self.dropout = dropout
+        self.prob = dropout
+        self.dropout = nn.Dropout(self.prob)
         self.seed = seed
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
@@ -270,7 +272,10 @@ class MultiheadAttention(nn.Module):
 
         attn_weights = F.softmax(attn_weights, dim=-1)
         if self.training:
-            attn_weights, _, _ = torch.dropoutV2(attn_weights, self.seed, p=self.dropout)
+            if self.platform == "npu":
+                attn_weights, _, _ = torch.dropoutV2(attn_weights, self.seed, p=self.prob)
+            elif self.platform == "gpu":
+                attn_weights = self.dropout(attn_weights)
 
         attn = strided_bmm2(attn_weights, v)
         assert list(attn.size()) == [bsz * self.num_heads, tgt_len, self.head_dim]

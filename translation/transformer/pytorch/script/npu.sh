@@ -19,10 +19,10 @@ export PTCOPY_ENABLE=1
 export TASK_QUEUE_ENABLE=1
 export DYNAMIC_OP="ADD#MUL"
 
-python3 -u train.py \
+python3 -u bench.py \
   $DATA_DIR \
   --platform npu \
-  --device-id 6\
+  --device-id 0\
   --arch transformer_wmt_en_de \
   --source-lang en \
   --target-lang de \
@@ -52,4 +52,4 @@ python3 -u train.py \
   --distributed-world-size 1\
   --amp\
   --amp-level $AMP_LEVEL \
-  > ${TRAIN_LOG}/train.log 2>&1 &
+  #> ${TRAIN_LOG}/train.log 2>&1 &
