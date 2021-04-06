@@ -1,20 +1,12 @@
-import collections
-import itertools
-import os
-import math
 import torch
 import torch.optim as optim
 import time
-import ctypes
 from apex import amp
 
 import sys
-import threading
-
-from copy import deepcopy
 from utils import options, utils, criterions
 import data
-from data import tokenizer, dictionary, data_utils, load_dataset_splits
+from data import data_utils
 from models import build_model
 import numpy as np
 
@@ -24,50 +16,8 @@ def _gen_seeds(shape):
 seed_shape = (32 * 1024 * 12, )
 
 
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self, name, fmt=':f'):
-        self.name = name
-        self.fmt = fmt
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
-        return fmtstr.format(**self.__dict__)
-
-
-class ProgressMeter(object):
-    def __init__(self, num_batches, meters, prefix=""):
-        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
-        self.meters = meters
-        self.prefix = prefix
-
-    def display(self, batch):
-        entries = [self.prefix + self.batch_fmtstr.format(batch)]
-        entries += [str(meter) for meter in self.meters]
-        print('\t'.join(entries))
-
-    def _get_batch_fmtstr(self, num_batches):
-        num_digits = len(str(num_batches // 1))
-        fmt = '{:' + str(num_digits) + 'd}'
-        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
-
-
 def main(args):
-    print(args)
+    # print(args)
 
     if args.platform == "gpu":
         device = torch.device('cuda:' + str(args.device_id))
@@ -84,9 +34,10 @@ def main(args):
 
     torch.manual_seed(args.seed)
 
+    # genernate data
     src_dict, tgt_dict = data_utils.load_dictionaries(args)
     datasets = data_utils.get_dummy_batch(args.max_sentences, src_dict, tgt_dict)
-    assert len(datasets) > 0, "随机生成数据为空！"
+    assert len(datasets) > 0, "empty genernated data!"
     sample = datasets[0]
     src_tokens = sample['net_input']['src_tokens'].to(args.device)
     src_lengths = sample['net_input']['src_lengths'].to(args.device)
@@ -102,6 +53,8 @@ def main(args):
     seed = _gen_seeds(seed_shape)
     seed = torch.from_numpy(seed)
     seed = seed.to(device)
+
+    # build model
     model = build_model(args, seed=seed)
     model = model.to(args.device)
     params = sum(p.numel() for p in model.parameters())
@@ -117,16 +70,12 @@ def main(args):
                 verbosity=0)
 
     # Build trainer
-    # trainer = DDPTrainer(args, model)
-    print('model {}, criterion {}'.format(args.arch, criterion.__class__.__name__))
-
-    print('training on {} NPUs'.format(args.distributed_world_size))
-    print('max sentences per NPU = {}'.format(args.max_sentences))
 
     # warm up
     for i in range(10):
         train(args, model, src_tokens, src_lengths, prev_output_tokens, target, criterion, optimizer)
     
+    # bench
     start_event = device_func.Event(enable_timing=True)
     end_event = device_func.Event(enable_timing=True)
     start_event.record()
@@ -150,8 +99,6 @@ def train(args, model, src_tokens, src_lengths, prev_output_tokens, target, crit
     logits, _ = model(src_tokens, src_lengths, prev_output_tokens)
     probs = torch.nn.functional.log_softmax(logits, dim=-1, dtype=torch.float32)
     loss = criterion(probs, target)
-    
-    #loss = trainer.train_step(sample, update_params=False)
 
     if args.amp:
         with amp.scale_loss(loss, optimizer) as scaled_loss:
