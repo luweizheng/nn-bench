@@ -4,7 +4,6 @@ import os
 import re
 import torch
 import traceback
-import torch.npu
 
 from torch.serialization import default_restore_location
 
@@ -74,6 +73,7 @@ def move_to_device(args, sample):
     if len(sample) == 0:
         return {}
     def _move_to_device(args, maybe_tensor):
+        print(f"_move_to_device {args.device}")
         if torch.is_tensor(maybe_tensor):
             return maybe_tensor.to(args.device)
         elif isinstance(maybe_tensor, dict):
@@ -82,11 +82,11 @@ def move_to_device(args, sample):
                 for key, value in maybe_tensor.items()
             }
         elif isinstance(maybe_tensor, list):
-            return [_move_to_device(args,x) for x in maybe_tensor]
+            return [_move_to_device(args, x) for x in maybe_tensor]
         else:
             return maybe_tensor
 
-    return _move_to_device(args,sample)
+    return _move_to_device(args, sample)
 
 
 
