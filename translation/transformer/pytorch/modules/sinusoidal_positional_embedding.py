@@ -12,8 +12,9 @@ class SinusoidalPositionalEmbedding(nn.Module):
     is added on the left side (left_pad=True) or right side (left_pad=False).
     """
 
-    def __init__(self, embedding_dim, padding_idx, left_pad, init_size=1024):
+    def __init__(self, embedding_dim, padding_idx, left_pad, platform, init_size=1024):
         super().__init__()
+        self.platform = platform
         self.embedding_dim = embedding_dim
         self.padding_idx = padding_idx
         self.left_pad = left_pad
@@ -23,8 +24,11 @@ class SinusoidalPositionalEmbedding(nn.Module):
             padding_idx,
         )
         self.register_buffer('_float_tensor', torch.FloatTensor(1))
-        self.register_buffer('positions_buffer',
-                             torch.arange(padding_idx + 1, init_size + padding_idx + 1).int())  # JIT compliance
+        
+        if self.platform == "npu":
+            self.register_buffer('positions_buffer', torch.arange(padding_idx + 1, init_size + padding_idx + 1).int())
+        elif self.platform == "gpu":
+            self.register_buffer('positions_buffer', torch.arange(padding_idx + 1, init_size + padding_idx + 1))
 
     @staticmethod
     def get_embedding(num_embeddings: int, embedding_dim: int, padding_idx: int):
@@ -66,9 +70,8 @@ class SinusoidalPositionalEmbedding(nn.Module):
 
         positions = positions[:input.size(1)]
         positions = positions.expand_as(input)
-
         if self.left_pad:
             positions = positions - mask.size(1) + mask.float().sum(dim=1).unsqueeze(1).int()
 
-        positions = input.clone().masked_scatter_(mask, torch.masked_select(positions,mask))
+        positions = input.clone().masked_scatter_(mask, torch.masked_select(positions, mask))
         return self.weights.index_select(0, positions.view(-1)).view(bsz, seq_len, -1).detach()

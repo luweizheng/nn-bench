@@ -25,8 +25,7 @@ class LabelSmoothedCrossEntropyCriterion(_Loss):
         super().__init__()
         self.eps = args.label_smoothing
         self.padding_idx = args.padding_idx
-        # loc = 'npu:{}'.format(self.args.device_id)
-        # self.device = loc
+        self.device = args.device
 
     def forward(self, norm_probs, target, reduce=True):
         """Compute the loss for the given sample.
@@ -34,7 +33,7 @@ class LabelSmoothedCrossEntropyCriterion(_Loss):
         target = target.view(-1, 1)
         lprobs = norm_probs.view(-1, norm_probs.size(-1))
         non_pad_mask = target.ne(self.padding_idx)
-        nll_loss = -lprobs.gather(dim=-1, index=target.cpu().long().npu())
+        nll_loss = -lprobs.gather(dim=-1, index=target.cpu().long().to(self.device))
         smooth_loss = -lprobs.sum(dim=-1, keepdim=True)
 
         nll_loss = nll_loss.masked_fill(~non_pad_mask, 0).sum()

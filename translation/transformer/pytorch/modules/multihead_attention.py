@@ -132,8 +132,8 @@ def query_linear(input: Tensor, weights_q: Tensor, scale_cpu: Tensor, scale_npu:
 def key_value_linears(input: Tensor, weights_k: Tensor, weights_v: Tensor):
     return KeyValueLinears.apply(input, weights_k, weights_v)
 
-def self_attn_linears(input: Tensor, weights_q: Tensor, weights_k: Tensor, weights_v: Tensor, scale_cpu: Tensor, scale_npu: Tensor):
-    return SelfAttentionLinears.apply(input, weights_q, weights_k, weights_v, scale_cpu, scale_npu)
+def self_attn_linears(input: Tensor, weights_q: Tensor, weights_k: Tensor, weights_v: Tensor, scale_cpu: Tensor, scale_device: Tensor):
+    return SelfAttentionLinears.apply(input, weights_q, weights_k, weights_v, scale_cpu, scale_device)
 
 def strided_bmm1(input1: Tensor, input2: Tensor):
     return StridedBmm1Func.apply(input1, input2)
@@ -159,7 +159,10 @@ class MultiheadAttention(nn.Module):
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
         self.scaling = self.head_dim ** -0.5
         self.scaling_cpu = Variable(torch.tensor(self.scaling))
-        self.scaling_npu = self.scaling_cpu.npu()
+        if self.platform == "npu":
+            self.scaling_device = self.scaling_cpu.npu()
+        elif self.platform == "gpu":
+            self.scaling_device = self.scaling_cpu.cuda()
         self._mask = torch.empty(0)
         self.q_proj_weight = Parameter(torch.Tensor(embed_dim, embed_dim))
         self.k_proj_weight = Parameter(torch.Tensor(embed_dim, embed_dim))
@@ -218,9 +221,9 @@ class MultiheadAttention(nn.Module):
 
         if qkv_same:
             q, k, v = self_attn_linears(query, self.q_proj_weight,self.k_proj_weight, self.v_proj_weight,
-                                        self.scaling_cpu, self.scaling_npu)
+                                        self.scaling_cpu, self.scaling_device)
         elif kv_same:
-            q = query_linear(query, self.q_proj_weight, self.scaling_cpu, self.scaling_npu)
+            q = query_linear(query, self.q_proj_weight, self.scaling_cpu, self.scaling_device)
             if not (saved_state is not None and 'prev_key' in saved_state and static_kv):
                 k, v = key_value_linears(key, self.k_proj_weight, self.v_proj_weight)
         else:

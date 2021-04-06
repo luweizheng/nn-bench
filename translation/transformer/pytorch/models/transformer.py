@@ -149,7 +149,7 @@ class TransformerEncoder(nn.Module):
         self.embed_scale = math.sqrt(embed_dim)
         self.embed_positions = PositionalEmbedding(
             args.max_source_positions, embed_dim, self.padding_idx,
-            left_pad=left_pad,
+            left_pad=left_pad, platform=self.platform
         )
 
 
@@ -217,7 +217,7 @@ class TransformerDecoder(IncrementalDecoder):
         self.embed_scale = math.sqrt(embed_dim)
         self.embed_positions = PositionalEmbedding(
             args.max_target_positions, embed_dim, padding_idx,
-            left_pad=left_pad,
+            left_pad=left_pad, platform=self.platform
         ) if not args.no_token_positional_embeddings else None
 
         self.layers = nn.ModuleList([])
@@ -455,8 +455,8 @@ def Linear(in_features, out_features, bias=True):
     return m
 
 
-def PositionalEmbedding(num_embeddings, embedding_dim, padding_idx, left_pad):
-    m = SinusoidalPositionalEmbedding(embedding_dim, padding_idx, left_pad, num_embeddings + padding_idx + 1)
+def PositionalEmbedding(num_embeddings, embedding_dim, padding_idx, left_pad, platform):
+    m = SinusoidalPositionalEmbedding(embedding_dim, padding_idx, left_pad, platform, num_embeddings + padding_idx + 1)
     return m
 
 @register_model_architecture('transformer', 'transformer')

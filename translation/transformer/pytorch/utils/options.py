@@ -54,8 +54,8 @@ def parse_args_and_arch(parser, input_args=None, parse_known=False):
         ARCH_MODEL_REGISTRY[args.arch].add_args(model_specific_group)
 
     # Add *-specific args to parser.
-    if hasattr(args, 'optimizer'):
-        OPTIMIZER_REGISTRY[args.optimizer].add_args(parser)
+    # if hasattr(args, 'optimizer'):
+    #     OPTIMIZER_REGISTRY[args.optimizer].add_args(parser)
     if hasattr(args, 'lr_scheduler'):
         LR_SCHEDULER_REGISTRY[args.lr_scheduler].add_args(parser)
 
