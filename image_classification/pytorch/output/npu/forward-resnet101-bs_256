@@ -1,0 +1,30 @@
+Running on device npu:0
+Traceback (most recent call last):
+  File "bench.py", line 163, in <module>
+    main(args)
+  File "bench.py", line 94, in main
+    predicted = forward(input_tensor, model, args)
+  File "bench.py", line 44, in forward
+    output_tensor = model(input_tensor)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/module.py", line 651, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/module.py", line 54, in __call__
+    return self.func(*args, **kwargs)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torchvision/models/resnet.py", line 157, in forward
+    x = self.layer3(x)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/module.py", line 651, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/container.py", line 100, in forward
+    input = module(input)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/module.py", line 651, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torchvision/models/resnet.py", line 87, in forward
+    out = self.conv3(out)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/module.py", line 651, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 349, in forward
+    return self._conv_forward(input, self.weight)
+  File "/usr/local/python3.7.5/lib/python3.7/site-packages/torch/nn/modules/conv.py", line 346, in _conv_forward
+    self.padding, self.dilation, self.groups)
+RuntimeError: malloc:/usr1/workspace/PyTorch_Apex_Daily_c20tr5/CODE/c10/npu/NPUCachingAllocator.cpp:344 NPU error, error code is 207001
+THPModule_npu_shutdown success.
