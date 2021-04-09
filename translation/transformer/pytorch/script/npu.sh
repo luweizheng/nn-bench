@@ -20,7 +20,7 @@ for arch in transformer_wmt_en_de transformer_vaswani_wmt_en_de_big
 do
     for batch_size in 64 128
     do
-        filename=bs_${batch_size}
+        filename=${arch}-bs_${batch_size}
         echo $filename
         python3 bench.py \
             $DATA_DIR \

@@ -1,5 +1,10 @@
 #! /bin/bash
 
+#SBATCH --job-name=gru_nnbench
+#SBATCH --nodes=1
+#SBATCH --partition=tesla
+#SBATCH --gpus=1
+
 source activate torch1.5
 cd ..
 

@@ -9,15 +9,15 @@ compute_type="forward"
 platform="npu"
 mkdir -p ../output/${platform}_conv2d
 
-for batch_size in 128 512 1024
+for batch_size in  128 # 256 512 1024
 do
-    for input_size in 224 448
+    for input_size in 224 # 448
     do
-        for in_channels in 32 64 128
+        for in_channels in  32 # 64 128
         do
-            for out_channels in 64 128 256
+            for out_channels in 64 # 128 256
             do
-                for filter_size in 1 3 5 7
+                for filter_size in 3 # 15 7
                 do  
                     filename=bs_${batch_size}-input_${input_size}-inchannel_${in_channels}-outchannel_${out_channels}-filtersize_${filter_size}
                     echo $filename
