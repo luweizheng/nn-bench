@@ -80,7 +80,7 @@ def main(args):
 
     
     # define optimizer
-    optimizer = optim.SGD(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters())
     model = model.to(device)
     if args.amp:
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level, verbosity=0,

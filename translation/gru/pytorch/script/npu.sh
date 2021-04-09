@@ -15,7 +15,7 @@ for batch_size in 64 128 256
 do
     filename=bs_${batch_size}
     echo $filename
-    python3 train.py --platform ${platform} \
+    python3 bench.py --platform ${platform} \
                 --amp \
                 --opt-level ${amp_level} \
                 1>output/${platform}/$filename 2>&1 &

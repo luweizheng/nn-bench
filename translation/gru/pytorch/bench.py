@@ -142,11 +142,12 @@ def main(args):
     # print(f"arithemetic intensity: {arithemetic_intensity}")
 
 
-    # 4. 执行forward+profiling
-    # with torch.autograd.profiler.profile(**prof_kwargs) as prof:
-    #     run()
-    # print(prof.key_averages().table())
-    # prof.export_chrome_trace("pytorch_prof_%s.prof" % args.device)
+    # profiling
+    prof_kwargs = {'use_npu': True}
+    with torch.autograd.profiler.profile(**prof_kwargs) as prof:
+        loss = train(src, trg, model, criterion, optimizer, device, args)
+    print(prof.key_averages().table(sort_by="npu_time_total"))
+    # prof.export_chrome_trace("pytorch_prof_%s.prof" % device)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Seq2Seq')

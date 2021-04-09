@@ -168,7 +168,9 @@ def mem_convnd(module: _ConvNd, input: Tensor, output: Tensor) -> int:
     # Each output element required K ** 2 memory access of each input channel
 
     input_dma = input.numel()
-
+    # input_dma = module.in_channels * reduce(mul, module.kernel_size) * output.numel()
+    # Correct with groups
+    input_dma //= module.groups
     # Access weight & bias
     ops_dma = num_params(module)
     output_dma = output.numel()

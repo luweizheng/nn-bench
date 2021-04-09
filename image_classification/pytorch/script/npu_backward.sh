@@ -10,7 +10,7 @@ dtype="float32"
 cd ../
 mkdir -p output/${platform}
 
-for arch in resnet50 resnet101 # densenet121 densenet201
+for arch in resnet50 resnet101 densenet121 densenet201
 do
     for batch_size in 64 128 256
     do
