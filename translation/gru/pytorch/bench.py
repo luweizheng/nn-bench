@@ -8,9 +8,6 @@ import sys
 import os
 import random
 
-# sys.path.append(os.path.abspath("../../nns"))
-# import nnutils
-# import nnstats
 from model import Encoder
 from model import Decoder
 from model import Seq2Seq
