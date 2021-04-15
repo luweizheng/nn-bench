@@ -12,11 +12,30 @@ colors = sns.color_palette("hls", n_colors=11)
 label example: bs_1024-input_65536-output_8192
 """
 
+def filter_data(rule, data):
+    keys = []
+    new_data = {}
+    for k,v in iter(data.items()):
+        if k == 'err_jobs' or k == 'states':
+            continue
+        new_data[k] = []
+        keys.append(k)
+    for i in range(len(data['labels'])):
+        f = 0
+        l = data['labels'][i]
+        for j in l.split('-'):
+            if j.split('_')[0] in rule and \
+                not int(j.split('_')[1]) in rule[ j.split('_')[0]]:
+                f = 1
+                break
+        if f == 0:
+            for k in keys:
+                new_data[k].append(data[k][i])
+    return new_data
+
 '''
 Return a list of hyperparameters that are swept from a label.
 '''
-
-
 def get_keyword(l):
     keywords = []
     for j in l.split('-'):
@@ -25,6 +44,13 @@ def get_keyword(l):
             keywords.append(p[0])
     return keywords
 
+def get_n_from_label(l, dim_name):
+    if dim_name == 'op':
+        return l.split('_')[-1].strip('0123456789-')
+    for i in l.split('-'):
+        if dim_name in i:
+            return i.split('_')[-1]
+    return None
 
 '''
 Get the range of hyperparameters from a list of labels.
@@ -154,86 +180,90 @@ def speedup_params(a_labels, a_perf, b_labels, b_perf, b_params, legend_box=(), 
     return fig
 
 
-def plot_roofline(f, ax, d, tpu_peak, membdw_peak, \
-                  scale='absolute', color_map={}, color_dim='', color=0, thre=1, label='', title=''):
-
+def plot_roofline(f, ax, d, flops_peak, membdw_peak, \
+                  scale='absolute', color_map={}, color_dim='', color=0, thre=1, marker='.', label='', title=''):
+    markersize = 3
     colormap = {}
+    flops = np.array(d['flops'])
+    # filter data that is zero
+    indices = np.where(flops > 0.0)
+    flops = flops[indices]
+
+    # convert into GFLOPS/s
+    flops = np.multiply(flops, 1e-9)
     
-    d['flops']=np.multiply(d['flops'], 1e-12)
-    flops=np.multiply(d['flops'], tpu_peak/100)
-    
-    labels = d['labels']
-    intensity = d['arithemetic_intensity']
+    labels = np.array(d['labels'])[indices]
+    intensity = np.array(d['arithemetic_intensity'])[indices]
     if color_dim == '':
         if color == 0:
-          ax.plot(d['arithemetic_intensity'], flops, '.', label=label)
+          ax.plot(intensity, flops, marker, label=label)
         else:
-          ax.plot(d['arithemetic_intensity'], flops, '.', label=label, color=color, alpha=0.9)
+          ax.plot(intensity, flops, marker, label=label, color=color, alpha=0.9)
     else:
-        
         hist = {}
         for i in range(len(labels)):
-            l = d['labels'][i]
-            n = d['batch_size'][i]          
+            l = labels[i]
+            n = get_n_from_label(l, color_dim)       
             if intensity[i]<=0 or flops[i]<=0:
-              continue
+                continue
             if not n in hist:
                 hist[n] = 0    
             hist[n] += 1
-        for k,v in iter(hist.items()):
+        for k, v in iter(hist.items()):
             hist[k] = v*1.0/len(labels)
         
         m = {}
         mycolors = sns.color_palette("hls", n_colors=len(hist)+2)
         for i in range(len(labels)):
-            #if time[i] < thre:
-            #  continue
+            # if time[i] < thre:
+            #   continue
             if intensity[i]<=0 or flops[i]<=0:
               continue
             l = labels[i]
-            n = d['batch_size'][i]
+            n = get_n_from_label(l, color_dim)
                     
             if color_map != {}:
                 if n in color_map:
                     if n in m:
-                      ax.plot(intensity[i], flops[i], '.', color=color_map[n], marker='.')
+                      ax.plot(intensity[i], flops[i], marker, color=color_map[n], marker=marker, ms=markersize)
                     else:
-                      ax.plot(intensity[i], flops[i], '.', color=color_map[n], marker='.', label = n)
+                      ax.plot(intensity[i], flops[i], marker, color=color_map[n], marker=marker, ms=markersize, label = n)
                       m[n] = 1
                 continue    
+            # second time
             if n in m:
-                ax.plot(intensity[i], flops[i], '.',
-                        color=mycolors[m[n]], marker='.')
+                ax.plot(intensity[i], flops[i], marker,
+                        color=mycolors[m[n]], marker=marker, ms=markersize)
             elif not n in m:
                 
                 m[n] = len(m) % len(colors)
                 colormap[n] = mycolors[m[n]]
-                ax.plot(intensity[i], flops[i], '.',
+                ax.plot(intensity[i], flops[i], marker,
                         color=mycolors[m[n]], label = n, 
                         #markeredgecolor='black', markeredgewidth=0.5, 
-                        marker='.')
+                        marker=marker, ms=markersize)
 
-        ax.legend(frameon=True, bbox_to_anchor=(1, 0.5))
+        ax.legend(frameon=True)
 
-    x1 = tpu_peak / membdw_peak
-    y1 = tpu_peak
+    x1 = flops_peak / membdw_peak
+    y1 = flops_peak
       
-    if max(d['arithemetic_intensity']) > x1:
+    # the flops peak
+    if max(intensity) > x1:
         if color == 0:
-            ax.hlines(y=y1, xmin=x1, 
-                xmax=max(d['arithemetic_intensity']), linewidth=2, color=colors[0])
+            ax.hlines(y=y1, xmin=x1, xmax=max(intensity), linewidth=2, color=colors[0])
         else:
-            ax.hlines(y=y1, xmin=x1, 
-                xmax=max(d['arithemetic_intensity']), linewidth=2, color=color)
+            ax.hlines(y=y1, xmin=x1, xmax=max(intensity), linewidth=2, color=color)
     
-    #x2 = min(d['flops_perc'])*(tpu_peak/100)/membdw_peak
-    #y2 = min(d['flops_perc'])*(tpu_peak/100)
-    x2 = min(d['flops'])*(tpu_peak/100)/membdw_peak
-    y2 = min(d['flops'])*(tpu_peak/100)
-
+    #x2 = min(d['flops_perc'])*(flops_peak/100)/membdw_peak
+    #y2 = min(d['flops_perc'])*(flops_peak/100)
+    x2 = min(flops)/membdw_peak
+    y2 = min(flops)
+    # x2 = 10e3/membdw_peak
+    # y2 = 10e3
     if scale == 'relative':
         y1 = 100
-        y2 = x2 * membdw_peak / tpu_peak * 100
+        y2 = x2 * membdw_peak / flops_peak * 100
     if color == 0:
         ax.plot([x1, x2], [y1, y2], linewidth=2, color=colors[0])
     else:
@@ -242,11 +272,11 @@ def plot_roofline(f, ax, d, tpu_peak, membdw_peak, \
     ax.set_yscale('log')
     ax.set_xscale('log')
     if scale == 'absolute':
-      ax.set_ylabel('GFLOPS', fontsize=15)
+        ax.set_ylabel('GFLOP/S', fontsize=15)
     else:
-      ax.set_ylabel('FLOPS %', fontsize=15)
-      ax.set_ylim(top=100)
-    ax.set_xlabel('Floating Ops/Byte', fontsize=15)
+        ax.set_ylabel('FLOPS %', fontsize=15)
+        ax.set_ylim()
+    ax.set_xlabel('FLOP/Byte', fontsize=15)
     ax.set_title(title, fontsize=15)
 
     if colormap == {}:
