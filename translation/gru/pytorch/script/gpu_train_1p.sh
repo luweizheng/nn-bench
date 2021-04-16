@@ -24,7 +24,7 @@ do
         --workers 40 \
         --data "/disk/Datasets/multi30k" \
         --batch-size ${batch_size} \
-        --epochs 50 \
+        --epochs 1 \
         --amp  \
         --amp-level ${amp_level} \
         > output/${platform}/train_1p/${filename} 2>&1 &

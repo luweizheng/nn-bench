@@ -144,6 +144,7 @@ def main_worker(args):
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
 
         bleu_score = calculate_bleu(valid_data, SRC, TRG, model, device)
+        print(f"bleu calculate time: {time.time() - end_time}")
 
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')

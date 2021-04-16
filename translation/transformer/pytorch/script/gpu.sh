@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 #SBATCH --job-name=gru_nnbench
 #SBATCH --nodes=1
