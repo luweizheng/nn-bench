@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#!/bin/bash
-
 #SBATCH --job-name=image_nnbench
 #SBATCH --nodes=1
 #SBATCH --partition=tesla

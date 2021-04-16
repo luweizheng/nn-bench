@@ -8,7 +8,7 @@ amp_level="O2"
 
 cd ..
 
-for batch_size in 512 # 64 128 256 512
+for batch_size in 256 512
 do
     filename=bs_${batch_size}
     echo ${filename}

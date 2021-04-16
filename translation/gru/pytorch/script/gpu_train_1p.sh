@@ -13,7 +13,7 @@ amp_level="O2"
 
 cd ..
 
-for batch_size in 512 # 64 128 256 512
+for batch_size in 256 512
 do
     filename=bs_${batch_size}
     echo $filename
@@ -22,7 +22,7 @@ do
         --platform ${platform} \
         --device-id 0 \
         --workers 40 \
-        --data "/disk/Datasets/multi30k" \
+        --data "~/Datasets/multi30k/" \
         --batch-size ${batch_size} \
         --epochs 1 \
         --amp  \
