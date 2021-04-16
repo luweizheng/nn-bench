@@ -8,7 +8,7 @@ compute_type="backward"
 dtype="float32"
 
 cd ../
-mkdir -p output/${platform}
+mkdir -p output/${platform}/bench/
 
 for arch in resnet50 resnet101 densenet121 densenet201
 do
@@ -29,7 +29,7 @@ do
                         --amp \
                         --opt-level "O2" \
                         --input_tensor_shape ${batch_size} 3 224 224 \
-                        1>./output/${platform}/$filename 2>&1 &
+                        1>./output/${platform}/bench/$filename 2>&1 &
             wait
         fi
     done

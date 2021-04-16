@@ -3,3 +3,4 @@ examples/translation/*
 **/__pycache__/
 fusion_result.json
 kernel_meta/
+output/

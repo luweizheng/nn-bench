@@ -1,4 +1,0 @@
-  File "bench.py", line 49
-    if args.platform == "gpu":
-    ^
-IndentationError: unexpected indent

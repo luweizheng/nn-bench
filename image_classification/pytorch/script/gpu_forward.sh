@@ -13,7 +13,7 @@ compute_type="forward"
 dtype="float16"
 
 cd ../
-mkdir -p output/${platform}
+mkdir -p output/${platform}/bench/
 
 for arch in resnet50 resnet101 densenet121 densenet201
 do
@@ -27,7 +27,7 @@ do
                     --dtype ${dtype} \
                     --num_iterations 1 \
                     --input_tensor_shape ${batch_size} 3 224 224 \
-                    1>./output/${platform}/$filename 2>&1 &
+                    1>./output/${platform}/bench/$filename 2>&1 &
         wait
     done
 done

@@ -1,26 +1,27 @@
 #!/bin/bash
 
 # set up environment
-source set_env.sh
+source activate torch1.5
 
-platform="npu"
+
 amp_level="O2"
-
+arch="resnet50"
 cd ..
 
-for batch_size in 512 # 64 128 256 512
+for batch_size in 256 # 64 128 256 512
 do
     filename=bs_${batch_size}
     echo ${filename}
     mkdir -p output/${platform}/train_1p/${filename}
     python3 train_1p.py \
         --platform ${platform} \
-        --device-id 2 \
-        --workers 40 \
-        --data "/home/luweizheng/modelzoo/built-in/PyTorch/Official/nlp/GRU_for_PyTorch/.data/multi30k" \
+        --device-id 0 \
+        --arch ${arch} \
+        --workers 32 \
+        --data "/home/luweizheng/Datasets/ImageNet/ILSVRC2012" \
         --save-dir output/${platform}/train_1p/${filename}/ \
         --batch-size ${batch_size} \
-        --epochs 30 \
+        --epochs 80 \
         --amp  \
         --amp-level ${amp_level} \
         > output/${platform}/train_1p/${filename}/log 2>&1 &

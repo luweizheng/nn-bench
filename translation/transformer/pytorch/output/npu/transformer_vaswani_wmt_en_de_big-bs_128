@@ -1,5 +1,0 @@
-Running on device npu:0
-time: 170.928
-params: 210804736
-example per sec: 74.88511962651046
-THPModule_npu_shutdown success.

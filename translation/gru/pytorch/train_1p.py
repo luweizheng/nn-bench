@@ -16,6 +16,7 @@ from torchtext.datasets import Multi30k
 from torchtext.data import Field, BucketIterator
 from torchtext.data.metrics import bleu_score
 from torchtext.data import Iterator, BucketIterator
+from torch.utils.tensorboard import SummaryWriter
 from apex import amp
 
 from model import Encoder
@@ -48,11 +49,13 @@ parser.add_argument('--platform', type=str, default='npu',
                     help='set which type of device you want to use. gpu/npu')
 parser.add_argument('--device-id', type=str, default='0',
                     help='set device id')
-parser.add_argument('--data', type=str, default='./data', help='data path')
+parser.add_argument('--data', type=str, default='./data', help='path to dataset')
 parser.add_argument('-j', '--workers', default=10, type=int, metavar='N',
                     help='number of data loading workers (default: 8)')
 parser.add_argument('--epochs', default=1, type=int, metavar='N',
                     help='number of total epochs to run')
+parser.add_argument('--save-dir', default="./output/", type=str,
+                    help='model output path like TensorBoard log.')
 parser.add_argument('-b', '--batch-size', default=512, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
@@ -118,6 +121,8 @@ def main_worker(args):
 
     seed_init = gen_seeds(32 * 1024 * 12).float().to(CALCULATE_DEVICE)
 
+    writer = SummaryWriter(args.save_dir)
+
     enc = Encoder(INPUT_DIM, ENC_EMB_DIM, HID_DIM, ENC_DROPOUT, platform=args.platform, seed=seed_init).to(CALCULATE_DEVICE)
     dec = Decoder(OUTPUT_DIM, DEC_EMB_DIM, HID_DIM, DEC_DROPOUT, platform=args.platform, seed=seed_init).to(CALCULATE_DEVICE)
 
@@ -127,37 +132,35 @@ def main_worker(args):
     print(f'The model has {count_parameters(model):,} trainable parameters')
     optimizer = optim.Adam(model.parameters())
     if args.amp:
+        print(f"amp_level {args.amp_level}, loss_scale {args.loss_scale}")
         model, optimizer = amp.initialize(model, optimizer, opt_level=args.amp_level, loss_scale=args.loss_scale, verbosity=0)
     TRG_PAD_IDX = TRG.vocab.stoi[TRG.pad_token]
     criterion = nn.CrossEntropyLoss(ignore_index=TRG_PAD_IDX).to(CALCULATE_DEVICE)
     best_valid_loss = float('inf')
 
     for epoch in range(args.epochs):
-
+        bleu_score = calculate_bleu(valid_data, SRC, TRG, model, device)
+        writer.add_scalar('bleu/val', bleu_score)
         start_time = time.time()
 
         train_loss = train(model, train_iterator, optimizer, criterion, args, CLIP, epoch)
+        writer.add_scalar('loss/train', train_loss)
         valid_loss = evaluate(model, valid_iterator, criterion, args)
-
+        writer.add_scalar('loss/val', valid_loss)
         end_time = time.time()
 
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
-
-        bleu_score = calculate_bleu(valid_data, SRC, TRG, model, device)
-        print(f"bleu calculate time: {time.time() - end_time}")
 
         print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f} | Train PPL: {math.exp(train_loss):7.3f}')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. PPL: {math.exp(valid_loss):7.3f}')
         print(f'\t Val. BLEU score: {bleu_score * 100:.4f}')
 
+    writer.close()
     # load model
     # model.load_state_dict(torch.load('seq2seq-gru-model.pth.tar'))
     # test_loss = evaluate(model, test_iterator, criterion, args)
     # print(f'| Test Loss: {test_loss:.3f} | Test PPL: {math.exp(test_loss):7.3f} |')
-
-    
-
     # print(f'BLEU score = {bleu_score * 100:.4f}')
 
 

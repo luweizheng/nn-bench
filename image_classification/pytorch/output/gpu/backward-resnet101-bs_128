@@ -1,7 +1,0 @@
-Running on device cuda:0
-flops: 20007772301825.89
-time: 30.172
-flops_scaled: 20.00777230182589 T
-arithemetic intensity: 554.2867899954514
-example_per_sec: 424.239
-params: 178196640
