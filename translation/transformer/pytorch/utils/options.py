@@ -54,8 +54,8 @@ def parse_args_and_arch(parser, input_args=None, parse_known=False):
         ARCH_MODEL_REGISTRY[args.arch].add_args(model_specific_group)
 
     # Add *-specific args to parser.
-    # if hasattr(args, 'optimizer'):
-    #     OPTIMIZER_REGISTRY[args.optimizer].add_args(parser)
+    if hasattr(args, 'optimizer'):
+        OPTIMIZER_REGISTRY[args.optimizer].add_args(parser)
     if hasattr(args, 'lr_scheduler'):
         LR_SCHEDULER_REGISTRY[args.lr_scheduler].add_args(parser)
 
@@ -190,7 +190,6 @@ def add_optimization_args(parser):
 
     # Optimizer definitions can be found under optim/
     group.add_argument('--optimizer', default='nag', metavar='OPT',
-                       choices=OPTIMIZER_REGISTRY.keys(),
                        help='optimizer: {} (default: nag)'.format(', '.join(OPTIMIZER_REGISTRY.keys())))
     group.add_argument('--lr', '--learning-rate', default='0.25', metavar='LR_1,LR_2,...,LR_N',
                        help='learning rate for the first N epochs; all epochs >N using LR_N'

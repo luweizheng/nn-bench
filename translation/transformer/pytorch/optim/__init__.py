@@ -30,10 +30,3 @@ def register_optimizer(name):
         return cls
 
     return register_optimizer_cls
-
-
-# automatically import any Python files in the optim/ directory
-# for file in os.listdir(os.path.dirname(__file__)):
-#     if file.endswith('.py') and not file.startswith('_'):
-#         module = file[:file.find('.py')]
-#         importlib.import_module('optim.' + module)
