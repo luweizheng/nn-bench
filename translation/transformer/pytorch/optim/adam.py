@@ -2,11 +2,10 @@ import math
 import torch
 import torch.optim
 
-from . import Optimizer, register_optimizer
+from . import Optimizer
 from .combined_adam_v3 import CombinedAdam
 # from apex.optimizers.fused_adam import FusedAdam
 
-@register_optimizer('adam')
 class SeqAdam(Optimizer):
     def __init__(self, args, params):
         super().__init__(args, params)

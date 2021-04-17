@@ -140,13 +140,13 @@ def main_worker(args):
 
     for epoch in range(args.epochs):
         bleu_score = calculate_bleu(valid_data, SRC, TRG, model, device)
-        writer.add_scalar('bleu/val', bleu_score)
+        writer.add_scalar('bleu/val', bleu_score, epoch)
         start_time = time.time()
 
         train_loss = train(model, train_iterator, optimizer, criterion, args, CLIP, epoch)
-        writer.add_scalar('loss/train', train_loss)
+        writer.add_scalar('loss/train', train_loss, epoch)
         valid_loss = evaluate(model, valid_iterator, criterion, args)
-        writer.add_scalar('loss/val', valid_loss)
+        writer.add_scalar('loss/val', valid_loss, epoch)
         end_time = time.time()
 
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)

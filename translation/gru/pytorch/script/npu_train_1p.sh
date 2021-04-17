@@ -15,7 +15,7 @@ do
     mkdir -p output/${platform}/train_1p/${filename}
     python3 train_1p.py \
         --platform ${platform} \
-        --device-id 2 \
+        --device-id 0 \
         --workers 40 \
         --data "/home/luweizheng/modelzoo/built-in/PyTorch/Official/nlp/GRU_for_PyTorch/.data/multi30k" \
         --save-dir output/${platform}/train_1p/${filename}/ \

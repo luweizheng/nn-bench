@@ -55,7 +55,12 @@ def parse_args_and_arch(parser, input_args=None, parse_known=False):
 
     # Add *-specific args to parser.
     if hasattr(args, 'optimizer'):
-        OPTIMIZER_REGISTRY[args.optimizer].add_args(parser)
+        parser.add_argument('--adam-beta1', type=float, default=0.9, metavar='B',
+                            help='beta1 for Adam optimizer')
+        parser.add_argument('--adam-beta2', type=float, default=0.999, metavar='B',
+                            help='beta2 for Adam optimizer')
+        parser.add_argument('--adam-eps', type=float, default=1e-8, metavar='D',
+                            help='epsilon for Adam optimizer')
     if hasattr(args, 'lr_scheduler'):
         LR_SCHEDULER_REGISTRY[args.lr_scheduler].add_args(parser)
 
@@ -130,7 +135,7 @@ def add_dataset_args(parser, train=False, gen=False):
     parser.add_argument('--pad-sequence', default=1, type=int, metavar='N',
                             help='Pad sequences to a multiple of N')
     if train:
-        parser.add_argument('data', metavar='DIR', help='path to data directory')
+        parser.add_argument('--data', metavar='DIR', help='path to data directory')
         group.add_argument('--train-subset', default='train', metavar='SPLIT',
                            choices=['train', 'valid', 'test'],
                            help='data subset to use for training (train, valid, test)')
@@ -169,7 +174,7 @@ def add_distributed_training_args(parser):
                         help='master addr')
     group.add_argument('--port', default='1234', type=str,
                         help='ip port')
-    group.add_argument('--device-id', default=0, type=int,
+    group.add_argument('--device-id', default="0", type=str,
                         help='device id to use.')
     return group
 

@@ -1,13 +1,14 @@
 import torch
-import torch.optim as optim
 import time
 from apex import amp
-
+import os
 import sys
+import math
 from utils import options, utils, criterions
 from utils.ddp_trainer import DDPTrainer
+from utils.meters import StopwatchMeter, TimeMeter
 import data
-from data import data_utils
+from data import data_utils, load_dataset_splits
 from models import build_model
 import numpy as np
 
@@ -15,6 +16,48 @@ MAX = 2147483647
 def _gen_seeds(shape):
     return np.random.uniform(1, MAX, size=shape).astype(np.float32)
 seed_shape = (32 * 1024 * 12, )
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self, name, fmt=':f'):
+        self.name = name
+        self.fmt = fmt
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+    def __str__(self):
+        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
+        return fmtstr.format(**self.__dict__)
+
+
+class ProgressMeter(object):
+    def __init__(self, num_batches, meters, prefix=""):
+        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
+        self.meters = meters
+        self.prefix = prefix
+
+    def display(self, batch):
+        entries = [self.prefix + self.batch_fmtstr.format(batch)]
+        entries += [str(meter) for meter in self.meters]
+        print('\t'.join(entries))
+
+    def _get_batch_fmtstr(self, num_batches):
+        num_digits = len(str(num_batches // 1))
+        fmt = '{:' + str(num_digits) + 'd}'
+        return '[' + fmt + '/' + fmt.format(num_batches) + ']'
 
 def main(args):
     print(args)
@@ -27,11 +70,12 @@ def main(args):
         device_func = torch.npu
 
         # import any Python files in the optim/ directory
-        # FusedAdam
-        for file in os.listdir(os.path.dirname(__file__ + "/optim")):
-            if file.endswith('.py') and not file.startswith('_'):
-                module = file[:file.find('.py')]
-                importlib.import_module('optim.' + module)
+        # print(f"{os.path.dirname(__file__)}")
+        
+        # for file in os.listdir(os.path.dirname(__file__) + "/optim"):
+        #     if file.endswith('.py') and not file.startswith('_'):
+        #         module = file[:file.find('.py')]
+        #         importlib.import_module('optim.' + module)
     else:
         device = torch.device('cpu')
     print("Running on device {}".format(device))
@@ -51,6 +95,7 @@ def main(args):
     model = build_model(args, seed=seed)
     print('| num. model params: {}'.format(sum(p.numel() for p in model.parameters())))
 
+    # optimizer = optim.build_optimizer(args, model.parameters())
     # Build trainer
     trainer = DDPTrainer(args, model)
     print('| model {}, criterion {}'.format(args.arch, trainer.criterion.__class__.__name__))
@@ -71,7 +116,6 @@ def main(args):
         max_positions_num=96,
 
     )
-
 
     # Train until the learning rate gets too small or model reaches target score
     max_epoch = args.max_epoch or math.inf
@@ -290,45 +334,3 @@ if __name__ == '__main__':
     ARGS = options.parse_args_and_arch(parser)
 
     main(ARGS)
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self, name, fmt=':f'):
-        self.name = name
-        self.fmt = fmt
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-
-    def __str__(self):
-        fmtstr = '{name} {val' + self.fmt + '} ({avg' + self.fmt + '})'
-        return fmtstr.format(**self.__dict__)
-
-
-class ProgressMeter(object):
-    def __init__(self, num_batches, meters, prefix=""):
-        self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
-        self.meters = meters
-        self.prefix = prefix
-
-    def display(self, batch):
-        entries = [self.prefix + self.batch_fmtstr.format(batch)]
-        entries += [str(meter) for meter in self.meters]
-        print('\t'.join(entries))
-
-    def _get_batch_fmtstr(self, num_batches):
-        num_digits = len(str(num_batches // 1))
-        fmt = '{:' + str(num_digits) + 'd}'
-        return '[' + fmt + '/' + fmt.format(num_batches) + ']'

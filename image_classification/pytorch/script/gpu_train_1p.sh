@@ -13,13 +13,12 @@ amp_level="O2"
 arch="resnet50"
 cd ..
 
-for batch_size in 256 # 64 128 256 512
+for batch_size in 128 # 64 128 256 512
 do
     filename=bs_${batch_size}
     echo ${filename}
     mkdir -p output/${platform}/train_1p/${filename}
-    python3 train_1p.py \
-        --platform ${platform} \
+    python3 train_1p.py --platform ${platform} \
         --device-id 0 \
         --arch ${arch} \
         --workers 32 \
@@ -29,6 +28,6 @@ do
         --epochs 80 \
         --amp  \
         --amp-level ${amp_level} \
-        > output/${platform}/train_1p/${filename}/log 2>&1 &
+        > output/${platform}/train_1p/${filename}/${filename}.log 2>&1 &
     wait
 done

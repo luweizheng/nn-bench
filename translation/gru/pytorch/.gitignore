@@ -4,3 +4,4 @@ kernel_meta/
 **/__pycache__/
 output/*
 *.pth.tar
+**/*.log

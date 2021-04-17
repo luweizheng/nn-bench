@@ -23,8 +23,11 @@ export DYNAMIC_OP="ADD#MUL"
 
 python3 -u train_1p.py \
   --data $DATA_DIR \
-  --device-id 6\
+  --platform "npu" \
+  --device-id 0\
   --arch transformer_wmt_en_de \
+  --source-lang en \
+  --target-lang de \
   --share-all-embeddings \
   --optimizer adam \
   --adam-beta1 0.9 \

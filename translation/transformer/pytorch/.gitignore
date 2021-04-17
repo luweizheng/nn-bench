@@ -4,3 +4,6 @@ examples/translation/*
 fusion_result.json
 kernel_meta/
 output/
+checkpoints/
+data/wmt14_en_de_joined_dict/
+**/*.log

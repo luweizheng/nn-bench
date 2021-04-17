@@ -73,7 +73,6 @@ def move_to_device(args, sample):
     if len(sample) == 0:
         return {}
     def _move_to_device(args, maybe_tensor):
-        print(f"_move_to_device {args.device}")
         if torch.is_tensor(maybe_tensor):
             return maybe_tensor.to(args.device)
         elif isinstance(maybe_tensor, dict):
