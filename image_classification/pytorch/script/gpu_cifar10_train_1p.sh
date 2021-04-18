@@ -10,7 +10,7 @@ source activate torch1.5
 
 
 amp_level="O2"
-arch="resnet50"
+arch="resnet56"
 platform="gpu"
 cd ..
 

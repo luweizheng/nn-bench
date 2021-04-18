@@ -21,12 +21,12 @@ do
     python3 train_1p.py \
         --platform ${platform} \
         --device-id 0 \
-        --workers 40 \
+        --workers 32 \
         --data "~/Datasets/multi30k/" \
         --batch-size ${batch_size} \
-        --epochs 1 \
+        --epochs 50 \
         --amp  \
         --amp-level ${amp_level} \
-        > output/${platform}/train_1p/${filename}/log 2>&1 &
+        > output/${platform}/train_1p/${filename}/${filename}.log 2>&1 &
     wait
 done
