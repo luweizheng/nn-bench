@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=image_nnbench
+#SBATCH --job-name=image_cifar10
 #SBATCH --nodes=1
 #SBATCH --partition=tesla
-#SBATCH --gpus=1
+#SBATCH --gpus=2
 
 # set up environment
 source activate torch1.5
