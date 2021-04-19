@@ -68,7 +68,7 @@ parser.add_argument('--print-freq', default=10, type=int,
 # apex
 parser.add_argument('--amp', default=False, action='store_true',
                     help='use amp to train the model')
-parser.add_argument('--loss-scale', default=32., type=float,
+parser.add_argument('--loss-scale', default=-1, type=float,
                     help='loss scale using in amp, default -1 means dynamic')
 parser.add_argument('--amp-level', default='O2', type=str,
                     help='amp optimization level, O2 means almost FP16, O0 means FP32')

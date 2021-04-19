@@ -23,6 +23,7 @@ do
         --device-id 0 \
         --workers 32 \
         --data "~/Datasets/multi30k/" \
+        --save-dir output/${platform}/train_1p/${filename}/ \
         --batch-size ${batch_size} \
         --epochs 50 \
         --amp  \

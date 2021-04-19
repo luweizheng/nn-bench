@@ -105,7 +105,7 @@ def get_parser(desc):
     parser.add_argument('--amp', action='store_true', help='use Automatic Mixed Precision')
     parser.add_argument('--amp-level', type=str, default="O1", help='choose apm\'s optimization level')
     parser.add_argument('--stat-file', type=str, default='run_log.json', help='Name of the file containing DLLogger output')
-    parser.add_argument('--save-dir', metavar='DIR', default='results',
+    parser.add_argument('--save-dir', metavar='DIR', default='./output',
                        help='path to save checkpoints and logs')
     return parser
 

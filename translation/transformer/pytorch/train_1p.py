@@ -11,6 +11,7 @@ import data
 from data import data_utils, load_dataset_splits
 from models import build_model
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
 MAX = 2147483647
 def _gen_seeds(shape):
@@ -103,6 +104,8 @@ def main(args):
     print('| training on {} NPUs'.format(args.distributed_world_size))
     print('| max sentences per NPU = {}'.format(args.max_sentences))
 
+    writer = SummaryWriter(args.save_dir)
+
     epoch_itr = data.EpochBatchIterator(
         dataset=datasets[args.train_subset],
         max_tokens=args.max_tokens,
@@ -139,18 +142,11 @@ def main(args):
         if epoch_itr.epoch % args.validate_interval == 0:
             valid_losses = validate(args, trainer, datasets, valid_subsets)
 
-
-        if valid_losses[0] < run_summary['val_loss']:
-            run_summary['val_loss'] = valid_losses[0]
-        run_summary['loss'] = valid_losses[0]
-        run_summary['speed'] = trainer.throughput_meter.u_avg
+        writer.add_scalar('loss/val', valid_losses[0], epoch_itr.epoch)
 
         # Only use first validation loss to update the learning rate
         lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
 
-        # Save checkpoint
-        if epoch_itr.epoch % args.save_interval == 0:
-            save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
 
     train_meter.stop()
     print('| done training in {:.1f} seconds'.format(train_meter.sum))
