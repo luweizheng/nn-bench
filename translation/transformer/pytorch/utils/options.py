@@ -4,7 +4,6 @@ import torch
 
 from models import ARCH_MODEL_REGISTRY, ARCH_CONFIG_REGISTRY
 from utils.criterions import CRITERION_REGISTRY
-from optim import OPTIMIZER_REGISTRY
 from optim.lr_scheduler import LR_SCHEDULER_REGISTRY
 
 
@@ -194,8 +193,8 @@ def add_optimization_args(parser):
                        help='update parameters every N_i batches, when in epoch i')
 
     # Optimizer definitions can be found under optim/
-    group.add_argument('--optimizer', default='nag', metavar='OPT',
-                       help='optimizer: {} (default: nag)'.format(', '.join(OPTIMIZER_REGISTRY.keys())))
+    group.add_argument('--optimizer', default='adam', metavar='OPT',
+                       help='optimizer (default: adam)')
     group.add_argument('--lr', '--learning-rate', default='0.25', metavar='LR_1,LR_2,...,LR_N',
                        help='learning rate for the first N epochs; all epochs >N using LR_N'
                             ' (note: this may be interpreted differently depending on --lr-scheduler)')

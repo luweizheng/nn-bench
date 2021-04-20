@@ -4,7 +4,7 @@ from itertools import chain
 
 import torch
 import torch.nn.functional as F
-from optim.cpex import amp
+# from optim.cpex import amp
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 
@@ -14,7 +14,7 @@ import optim
 from utils.meters import TimeMeter
 from utils.criterions import CRITERION_REGISTRY
 
-import dllogger as DLLogger
+# import dllogger as DLLogger
 import math
 import time
 import numpy as np
@@ -35,20 +35,35 @@ class DDPTrainer(object):
         self.criterion = CRITERION_REGISTRY[args.criterion](self.args).to(args.device)
         self.optimizer = optim.build_optimizer(self.args, self.model.parameters())
         self.lr_scheduler = lr_scheduler.build_lr_scheduler(self.args, self.optimizer)
-
-        if args.amp:
-            model, optimizer = amp.initialize(
-                self.model,
-                self.optimizer._optimizer,
-                opt_level=self.args.amp_level if self.args.amp_level else 'O2',
-                # max_loss_scale=2**15,
-                # max_loss_scale=1024,
-                # min_loss_scale = 0.0001,
-                loss_scale=8,
-                cast_model_outputs=torch.float16,
-                combine_grad=True,
-                verbosity=0
-            )
+        if args.platform == "npu":
+            from optim.cpex import amp
+            if args.amp:
+                model, optimizer = amp.initialize(
+                    self.model,
+                    self.optimizer._optimizer,
+                    opt_level=self.args.amp_level if self.args.amp_level else 'O2',
+                    # max_loss_scale=2**15,
+                    # max_loss_scale=1024,
+                    # min_loss_scale = 0.0001,
+                    loss_scale=8,
+                    cast_model_outputs=torch.float16,
+                    combine_grad=True,
+                    verbosity=0
+                )
+        elif args.platform == "gpu":
+            from apex import amp
+            if args.amp:
+                model, optimizer = amp.initialize(
+                    self.model,
+                    self.optimizer._optimizer,
+                    opt_level=self.args.amp_level if self.args.amp_level else 'O2',
+                    # max_loss_scale=2**15,
+                    # max_loss_scale=1024,
+                    # min_loss_scale = 0.0001,
+                    loss_scale=8,
+                    cast_model_outputs=torch.float16,
+                    verbosity=0
+                )
 
         if self.args.distributed_world_size > 1:
             self.model = DDP(model, device_ids=[self.args.device_id], broadcast_buffers=False)
@@ -189,8 +204,8 @@ class DDPTrainer(object):
                 'updates': 1
             }
 
-            DLLogger.log(step=self._num_updates, data=info_log_data, verbosity=0)
-            DLLogger.log(step=self._num_updates, data=debug_log_data, verbosity=1)
+            # DLLogger.log(step=self._num_updates, data=info_log_data, verbosity=0)
+            # DLLogger.log(step=self._num_updates, data=debug_log_data, verbosity=1)
 
             self.clear_buffered_stats()
             return sum(log.get('loss', 0) for log in logging_outputs) / sample_size / math.log(2)
@@ -201,6 +216,7 @@ class DDPTrainer(object):
         oom = 0
         try:
             if sample is not None:
+                
                 # calculate loss and sample size
                 # src_tokens, src_lengths, prev_output_tokens
                 # npu only accept int32 tensors
@@ -208,8 +224,14 @@ class DDPTrainer(object):
                     sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int32)
                     sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int32)
                     sample['target'] = sample['target'].to(torch.int32)
+                elif self.args.platform == "gpu":
+                    sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int64)
+                    sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int64)
+                    sample['target'] = sample['target'].to(torch.int64)
+
                 logits, _ = self.model(sample['net_input']['src_tokens'], sample['net_input']['src_lengths'], sample['net_input']['prev_output_tokens'])
                 target = sample['target']
+                
                 probs = F.log_softmax(logits, dim=-1, dtype=torch.float32)
                 loss = self.criterion(probs, target)
         except RuntimeError as e:
@@ -227,8 +249,12 @@ class DDPTrainer(object):
         if loss is not None:
             try:
                 if self.args.amp:
-                    with amp.scale_loss(loss, self.optimizer._optimizer) as scaled_loss:
-                        scaled_loss.backward()
+                    if self.args.platform == "npu":
+                        from optim.cpex import amp
+                    elif self.args.platform == "gpu":
+                        from apex import amp
+                        with amp.scale_loss(loss, self.optimizer._optimizer) as scaled_loss:
+                            scaled_loss.backward()
                 else:
                     loss.backward()
 

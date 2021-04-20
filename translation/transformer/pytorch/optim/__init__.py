@@ -1,8 +1,6 @@
 import importlib
 import os
 from .optimizer import Optimizer
-from .adam import SeqAdam
-
 
 
 OPTIMIZER_REGISTRY = {}
@@ -10,7 +8,12 @@ OPTIMIZER_CLASS_NAMES = set()
 
 
 def build_optimizer(args, params):
-    return SeqAdam(args, params)
+    if args.platform == "npu":
+        from .adam import SeqAdam
+        return SeqAdam(args, params)
+    elif args.platform == "gpu":
+        from .adam import NormalAdam
+        return NormalAdam(args, params)
 
 
 # def register_optimizer(name):

@@ -72,17 +72,6 @@ class LanguagePairDataset(Dataset):
 
     def collater(self, samples):
         """Merge a list of samples to form a mini-batch."""
-        print(f"samples: {samples}")
-        for s in samples:
-            print(f"source length: {s['source'].shape}")
-            print(f"target length: {s['target'].shape}")  
-                
-        print(f"pad_idx: {self.src_dict.pad()}")
-        print(f"eos_idx: {self.src_dict.eos()}")
-        print(f"left_pad_source: {self.left_pad_source}")
-        print(f"left_pad_target: {self.left_pad_target}")
-        print(f"pad_sequence: {self.pad_sequence}")
-        print(f"gd_size: {self.gd_size}")
         return data_utils.collate(
             samples, pad_idx=self.src_dict.pad(), eos_idx=self.src_dict.eos(),
             left_pad_source=self.left_pad_source, left_pad_target=self.left_pad_target,

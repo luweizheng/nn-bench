@@ -3,13 +3,13 @@ import torch
 import torch.optim
 
 from . import Optimizer
-from .combined_adam_v3 import CombinedAdam
 # from apex.optimizers.fused_adam import FusedAdam
 
 class SeqAdam(Optimizer):
     def __init__(self, args, params):
         super().__init__(args, params)
         # self._optimizer = FusedAdam(params, **self.optimizer_config)
+        from .combined_adam_v3 import CombinedAdam
         self._optimizer = CombinedAdam(params, **self.optimizer_config)
 
     @staticmethod
@@ -37,99 +37,104 @@ class SeqAdam(Optimizer):
             'weight_decay': self.args.weight_decay,
         }
 
+class NormalAdam(Optimizer):
+    def __init__(self, args, params):
+        super().__init__(args, params)
+        self._optimizer = torch.optim.Adam(params)
 
-class Adam(torch.optim.Optimizer):
-    """Implements Adam algorithm.
 
-    This implementation is modified from torch.optim.Adam based on:
-    `Fixed Weight Decay Regularization in Adam`
-    (see https://arxiv.org/abs/1711.05101)
+# class Adam(Optimizer):
+#     """Implements Adam algorithm.
 
-    It has been proposed in `Adam: A Method for Stochastic Optimization`_.
+#     This implementation is modified from torch.optim.Adam based on:
+#     `Fixed Weight Decay Regularization in Adam`
+#     (see https://arxiv.org/abs/1711.05101)
 
-    Arguments:
-        params (iterable): iterable of parameters to optimize or dicts defining
-            parameter groups
-        lr (float, optional): learning rate (default: 1e-3)
-        betas (Tuple[float, float], optional): coefficients used for computing
-            running averages of gradient and its square (default: (0.9, 0.999))
-        eps (float, optional): term added to the denominator to improve
-            numerical stability (default: 1e-8)
-        weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
-        amsgrad (boolean, optional): whether to use the AMSGrad variant of this
-            algorithm from the paper `On the Convergence of Adam and Beyond`_
+#     It has been proposed in `Adam: A Method for Stochastic Optimization`_.
 
-    .. _Adam\: A Method for Stochastic Optimization:
-        https://arxiv.org/abs/1412.6980
-    .. _On the Convergence of Adam and Beyond:
-        https://openreview.net/forum?id=ryQu7f-RZ
-    """
+#     Arguments:
+#         params (iterable): iterable of parameters to optimize or dicts defining
+#             parameter groups
+#         lr (float, optional): learning rate (default: 1e-3)
+#         betas (Tuple[float, float], optional): coefficients used for computing
+#             running averages of gradient and its square (default: (0.9, 0.999))
+#         eps (float, optional): term added to the denominator to improve
+#             numerical stability (default: 1e-8)
+#         weight_decay (float, optional): weight decay (L2 penalty) (default: 0)
+#         amsgrad (boolean, optional): whether to use the AMSGrad variant of this
+#             algorithm from the paper `On the Convergence of Adam and Beyond`_
 
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
-                 weight_decay=0, amsgrad=False):
-        defaults = dict(lr=lr, betas=betas, eps=eps,
-                        weight_decay=weight_decay, amsgrad=amsgrad)
-        super(Adam, self).__init__(params, defaults)
+#     .. _Adam\: A Method for Stochastic Optimization:
+#         https://arxiv.org/abs/1412.6980
+#     .. _On the Convergence of Adam and Beyond:
+#         https://openreview.net/forum?id=ryQu7f-RZ
+#     """
 
-    def step(self, closure=None):
-        """Performs a single optimization step.
+#     def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
+#                  weight_decay=0, amsgrad=False):
+#         defaults = dict(lr=lr, betas=betas, eps=eps,
+#                         weight_decay=weight_decay, amsgrad=amsgrad)
+#         super(Adam, self).__init__(params, defaults)
 
-        Arguments:
-            closure (callable, optional): A closure that reevaluates the model
-                and returns the loss.
-        """
-        loss = None
-        if closure is not None:
-            loss = closure()
+#     def step(self, closure=None):
+#         """Performs a single optimization step.
 
-        for group in self.param_groups:
-            for p in group['params']:
-                if p.grad is None:
-                    continue
-                grad = p.grad.data
-                if grad.is_sparse:
-                    raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
-                amsgrad = group['amsgrad']
+#         Arguments:
+#             closure (callable, optional): A closure that reevaluates the model
+#                 and returns the loss.
+#         """
+#         loss = None
+#         if closure is not None:
+#             loss = closure()
 
-                state = self.state[p]
+#         for group in self.param_groups:
+#             for p in group['params']:
+#                 if p.grad is None:
+#                     continue
+#                 grad = p.grad.data
+#                 if grad.is_sparse:
+#                     raise RuntimeError('Adam does not support sparse gradients, please consider SparseAdam instead')
+#                 amsgrad = group['amsgrad']
 
-                # State initialization
-                if len(state) == 0:
-                    state['step'] = 0
-                    # Exponential moving average of gradient values
-                    state['exp_avg'] = torch.zeros_like(p.data)
-                    # Exponential moving average of squared gradient values
-                    state['exp_avg_sq'] = torch.zeros_like(p.data)
-                    if amsgrad:
-                        # Maintains max of all exp. moving avg. of sq. grad. values
-                        state['max_exp_avg_sq'] = torch.zeros_like(p.data)
+#                 state = self.state[p]
 
-                exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
-                if amsgrad:
-                    max_exp_avg_sq = state['max_exp_avg_sq']
-                beta1, beta2 = group['betas']
+#                 # State initialization
+#                 if len(state) == 0:
+#                     state['step'] = 0
+#                     # Exponential moving average of gradient values
+#                     state['exp_avg'] = torch.zeros_like(p.data)
+#                     # Exponential moving average of squared gradient values
+#                     state['exp_avg_sq'] = torch.zeros_like(p.data)
+#                     if amsgrad:
+#                         # Maintains max of all exp. moving avg. of sq. grad. values
+#                         state['max_exp_avg_sq'] = torch.zeros_like(p.data)
 
-                state['step'] += 1
+#                 exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
+#                 if amsgrad:
+#                     max_exp_avg_sq = state['max_exp_avg_sq']
+#                 beta1, beta2 = group['betas']
 
-                # Decay the first and second moment running average coefficient
-                exp_avg.mul_(beta1).add_(grad, alpha = 1 - beta1)
-                exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value = 1 -beta2)
+#                 state['step'] += 1
 
-                if amsgrad:
-                    # Maintains the maximum of all 2nd moment running avg. till now
-                    max_exp_avg_sq = torch.max(max_exp_avg_sq, exp_avg_sq)
-                    # Use the max. for normalizing running avg. of gradient
-                    denom = max_exp_avg_sq.sqrt().add_(group['eps'])
-                else:
-                    denom = exp_avg_sq.sqrt().add_(group['eps'])
+#                 # Decay the first and second moment running average coefficient
+#                 exp_avg.mul_(beta1).add_(grad, alpha = 1 - beta1)
+#                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value = 1 -beta2)
 
-                bias_correction1 = 1 - beta1 ** state['step']
-                bias_correction2 = 1 - beta2 ** state['step']
-                step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
+#                 if amsgrad:
+#                     # Maintains the maximum of all 2nd moment running avg. till now
+#                     max_exp_avg_sq = torch.max(max_exp_avg_sq, exp_avg_sq)
+#                     # Use the max. for normalizing running avg. of gradient
+#                     denom = max_exp_avg_sq.sqrt().add_(group['eps'])
+#                 else:
+#                     denom = exp_avg_sq.sqrt().add_(group['eps'])
 
-                if group['weight_decay'] != 0:
-                    p.data.add_(-group['weight_decay'] * group['lr'], p.data)
+#                 bias_correction1 = 1 - beta1 ** state['step']
+#                 bias_correction2 = 1 - beta2 ** state['step']
+#                 step_size = group['lr'] * math.sqrt(bias_correction2) / bias_correction1
 
-                # p.data.addcdiv_(-step_size, exp_avg, denom)
-                p.data.addcdiv_(exp_avg, denom, value=-step_size)
-        return loss
+#                 if group['weight_decay'] != 0:
+#                     p.data.add_(-group['weight_decay'] * group['lr'], p.data)
+
+#                 # p.data.addcdiv_(-step_size, exp_avg, denom)
+#                 p.data.addcdiv_(exp_avg, denom, value=-step_size)
+#         return loss

@@ -10,6 +10,7 @@ from utils.meters import StopwatchMeter, TimeMeter
 import data
 from data import data_utils, load_dataset_splits
 from models import build_model
+import torch.nn.functional as F
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
@@ -94,15 +95,23 @@ def main(args):
     seed = torch.from_numpy(seed)
     seed = seed.to(device)
     model = build_model(args, seed=seed)
+    model = model.to(device)
     print('| num. model params: {}'.format(sum(p.numel() for p in model.parameters())))
+    
+    criterion = criterions.LabelSmoothedCrossEntropyCriterion(args).to(device)
 
     # optimizer = optim.build_optimizer(args, model.parameters())
     # Build trainer
-    trainer = DDPTrainer(args, model)
-    print('| model {}, criterion {}'.format(args.arch, trainer.criterion.__class__.__name__))
+    # trainer = DDPTrainer(args, model)
+    print('| model {}, criterion {}'.format(args.arch, criterion.__class__.__name__))
 
-    print('| training on {} NPUs'.format(args.distributed_world_size))
+    print('| training on {} devices'.format(args.distributed_world_size))
     print('| max sentences per NPU = {}'.format(args.max_sentences))
+
+    optimizer = torch.optim.Adam(model.parameters(), betas=(0.9, 0.98), eps=1e-9)
+
+    if args.amp:
+        model, optimizer = amp.initialize(model, optimizer, opt_level=args.amp_level, loss_scale=8, verbosity=0)
 
     writer = SummaryWriter(args.save_dir)
 
@@ -123,7 +132,6 @@ def main(args):
     # Train until the learning rate gets too small or model reaches target score
     max_epoch = args.max_epoch or math.inf
     max_update = args.max_update or math.inf
-    lr = trainer.get_lr()
     train_meter = StopwatchMeter()
     train_meter.start()
     valid_losses = [None]
@@ -134,27 +142,25 @@ def main(args):
                    'accuracy': 0}
 
     # max_update
-    while lr >= args.min_lr and epoch_itr.epoch < max_epoch and trainer.get_num_updates() < max_update:
+    while epoch_itr.epoch < max_epoch:
         
         # train for one epoch
-        train(args, trainer, datasets, epoch_itr)
+        train(args, datasets, epoch_itr, model, criterion, optimizer)
 
         if epoch_itr.epoch % args.validate_interval == 0:
-            valid_losses = validate(args, trainer, datasets, valid_subsets)
+            valid_losses = validate(args, datasets, epoch_itr, model, criterion, optimizer)
 
         writer.add_scalar('loss/val', valid_losses[0], epoch_itr.epoch)
 
-        # Only use first validation loss to update the learning rate
-        lr = trainer.lr_step(epoch_itr.epoch, valid_losses[0])
-
-
+    writer.close()
     train_meter.stop()
     print('| done training in {:.1f} seconds'.format(train_meter.sum))
 
 
-def train(args, trainer, datasets, epoch_itr):
+def train(args, datasets, epoch_itr, model, criterion, optimizer):
     """Train the model for one epoch."""
-
+    model.train()
+    optimizer.zero_grad()
     itr = epoch_itr.next_epoch_itr()
 
     # update parameters every N batches
@@ -166,11 +172,12 @@ def train(args, trainer, datasets, epoch_itr):
     num_batches = len(epoch_itr)
 
     batch_time = AverageMeter('Time', ':6.3f')
+    data_time = AverageMeter('Data', ':6.3f')
     sentence_s = AverageMeter('Sentence/s', ':6.3f')
     losses = AverageMeter('Loss', ':.4f')
 
-    progress = ProgressMeter(int(num_batches/update_freq),
-                             [batch_time, sentence_s,losses],
+    progress = ProgressMeter(int(num_batches),
+                             [batch_time, data_time, sentence_s, losses],
                              prefix = "Epoch: [{}]".format(epoch_itr.epoch))
 
     print("Update Frequence is :", str(update_freq))
@@ -178,151 +185,100 @@ def train(args, trainer, datasets, epoch_itr):
     first_valid = args.valid_subset.split(',')[0]
     max_update = args.max_update or math.inf
 
-    trainer.get_throughput_meter().reset()
-
+    end = time.time()
     for i, sample in enumerate(itr):
-        if i < num_batches - 1 and (i + 1) % update_freq > 0:
-            # buffer updates according to --update-freq
-            loss = trainer.train_step(sample, update_params=False, last_step=(i == len(itr) - 1))
-            continue
+        data_time.update(time.time() - end)
+        # move sample to device
+        sample = utils.move_to_device(args, sample)
+
+        # calculate loss and sample size
+        # src_tokens, src_lengths, prev_output_tokens
+        # npu only accept int32 tensors
+        if args.platform == "npu":
+            sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int32)
+            sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int32)
+            sample['target'] = sample['target'].to(torch.int32)
+        elif args.platform == "gpu":
+            sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int64)
+            sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int64)
+            sample['target'] = sample['target'].to(torch.int64)
+
+        logits, _ = model(sample['net_input']['src_tokens'], sample['net_input']['src_lengths'], sample['net_input']['prev_output_tokens'])
+        target = sample['target']
+        
+        probs = F.log_softmax(logits, dim=-1, dtype=torch.float32)
+        loss = criterion(probs, target)
+
+        losses.update(loss.item() / sample['ntokens'] / math.log(2))
+
+        if args.amp:
+                with amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
         else:
-            loss = trainer.train_step(sample, update_params=True, last_step=(i == len(itr) - 1))
-            if loss != None:
-                losses.update(loss)
-        if i >= 10:
-            t = time.time()
-            batch_time.update((t - end)/update_freq)
-            sentence_s.update(args.max_sentences/(t-end)*update_freq)
-            end = time.time()
-        if i < 10:
-            end = time.time()
-        if i >= 10:
-            progress.display(int((i+1)/update_freq))
+            loss.backward()
 
+        optimizer.step()
 
-        # ignore the first mini-batch in words-per-second calculation
-        if i == 0:
-            trainer.get_throughput_meter().reset()
+        if i % 10 == 0:
+            progress.display(i)
 
-        # Mid epoch checkpoint
-        num_updates = trainer.get_num_updates()
-        if args.save_interval_updates > 0 and num_updates % args.save_interval_updates == 0:
-            valid_losses = validate(args, trainer, datasets, [first_valid])
-            save_checkpoint(args, trainer, epoch_itr, valid_losses[0])
-
-        if num_updates >= max_update:
-            break
+        batch_time.update(time.time() - end)
+        end = time.time()
 
     print("End of epoch, batch_size:", args.max_sentences, 'Time: {:.3f}'.format(batch_time.avg), ' Sentence/s@all {:.3f}'.format(
         args.max_sentences / batch_time.avg))
 
 
-def validate(args, trainer, datasets, subsets):
+def validate(args, datasets, model, criterion, optimizer):
     """Evaluate the model on the validation set(s) and return the losses."""
-    # Reset value iterations counter
-    trainer._num_val_iterations = 0
+    model.eval()
 
-    valid_losses = []
-    for subset in subsets:
+    # Initialize data iterator
+    itr = data.EpochBatchIterator(
+        dataset=datasets[subset],
+        max_tokens=args.max_tokens,
+        max_sentences=args.max_sentences_valid,
+        max_positions=args.max_positions,
+        ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
+        required_batch_size_multiple=8,
+        seed=args.seed,
+        num_shards=1,
+        shard_id=0,
+        max_positions_num=1024,
+    ).next_epoch_itr(shuffle=False)
 
-        if len(subsets) > 1:
-            print('Validating on \'{}\' subset'.format(subset))
+    num_batches = len(itr)
+    batch_time = AverageMeter('Time', ':6.3f')
+    losses = AverageMeter('Loss', ':.4e')
+    progress = ProgressMeter(
+        int(num_batches),
+        [batch_time, losses],
+        prefix='Test: ')
 
-        # Initialize data iterator
-        itr = data.EpochBatchIterator(
-            dataset=datasets[subset],
-            max_tokens=args.max_tokens,
-            max_sentences=args.max_sentences_valid,
-            max_positions=args.max_positions,
-            ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
-            required_batch_size_multiple=8,
-            seed=args.seed,
-            num_shards=1,
-            shard_id=0,
-            max_positions_num=1024,
-        ).next_epoch_itr(shuffle=False)
+    for i, sample in enumerate(itr):
+        # move sample to device
+        sample = utils.move_to_device(args, sample)
+        with torch.no_grad():
+            if args.platform == "npu":
+                sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int32)
+                sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int32)
+                sample['target'] = sample['target'].to(torch.int32)
+            elif args.platform == "gpu":
+                sample['net_input']['src_tokens'] = sample['net_input']['src_tokens'].to(torch.int64)
+                sample['net_input']['prev_output_tokens'] = sample['net_input']['prev_output_tokens'].to(torch.int64)
+                sample['target'] = sample['target'].to(torch.int64)
+            logits, _ = model(sample['net_input']['src_tokens'], sample['net_input']['src_lengths'], sample['net_input']['prev_output_tokens'])
+            target = sample['target']
+    
+            probs = F.log_softmax(logits, dim=-1, dtype=torch.float32)
+            loss = criterion(probs, target)
+            losses.update(loss.item() / sample['ntokens'] / math.log(2))
 
+            if i % 10 == 0:
+                progress.display(i)
 
-        subset_losses = []
-        for sample in itr:
-            loss = trainer.valid_step(sample)
-            subset_losses.append(loss)
-        subset_loss = sum(subset_losses) / len(subset_losses)
-
-        valid_losses.append(subset_loss)
-        print(f'Validation loss on subset {subset}: {subset_loss}')
-
-    return valid_losses
-
-
-def save_checkpoint(args, trainer, epoch_itr, val_loss):
-    if args.no_save or not distributed_utils.is_master(args):
-        return
-    epoch = epoch_itr.epoch
-    end_of_epoch = epoch_itr.end_of_epoch()
-    updates = trainer.get_num_updates()
-
-    checkpoint_conds = collections.OrderedDict()
-    checkpoint_conds['checkpoint{}.pt'.format(epoch)] = (
-            end_of_epoch and not args.no_epoch_checkpoints and
-            epoch % args.save_interval == 0
-    )
-    checkpoint_conds['checkpoint_{}_{}.pt'.format(epoch, updates)] = (
-            not end_of_epoch and args.save_interval_updates > 0 and
-            updates % args.save_interval_updates == 0
-    )
-    checkpoint_conds['checkpoint_best.pt'] = (
-            val_loss is not None and
-            (not hasattr(save_checkpoint, 'best') or val_loss < save_checkpoint.best)
-    )
-    checkpoint_conds['checkpoint_last.pt'] = True  # keep this last so that it's a symlink
-
-    prev_best = getattr(save_checkpoint, 'best', val_loss)
-    if val_loss is not None:
-        save_checkpoint.best = min(val_loss, prev_best)
-    extra_state = {
-        'best': save_checkpoint.best,
-        'train_iterator': epoch_itr.state_dict(),
-        'val_loss': val_loss,
-    }
-    extra_state.update(save_checkpoint.extra_items)
-
-    checkpoints = [os.path.join(args.save_dir, 'checkpoints', fn) for fn, cond in checkpoint_conds.items() if cond]
-    if len(checkpoints) > 0:
-        for cp in checkpoints:
-            trainer.save_checkpoint(cp, extra_state)
-
-    if not end_of_epoch and args.keep_interval_updates > 0:
-        # remove old checkpoints; checkpoints are sorted in descending order
-        checkpoints = utils.checkpoint_paths(os.path.join(args.save_dir, 'checkpoints'),
-                                             pattern=r'checkpoint_\d+_(\d+)\.pt')
-        for old_chk in checkpoints[args.keep_interval_updates:]:
-            os.remove(old_chk)
-
-
-def add_extra_items_to_checkpoint(dict):
-    if not hasattr(save_checkpoint, 'extra_items'):
-        save_checkpoint.extra_items = {}
-    save_checkpoint.extra_items.update(dict)
-
-
-def load_checkpoint(args, trainer, epoch_itr):
-    """Load a checkpoint and replay dataloader to match."""
-    os.makedirs(os.path.join(args.save_dir, 'checkpoints'), exist_ok=True)
-    checkpoint_path = os.path.join(args.save_dir, 'checkpoints', args.restore_file)
-    if os.path.isfile(checkpoint_path):
-        extra_state = trainer.load_checkpoint(checkpoint_path)
-        if extra_state is not None:
-            # replay train iterator to match checkpoint
-            epoch_itr.load_state_dict(extra_state['train_iterator'])
-
-            print('| loaded checkpoint {} (epoch {} @ {} updates)'.format(
-                checkpoint_path, epoch_itr.epoch, trainer.get_num_updates()))
-
-            trainer.lr_step(epoch_itr.epoch)
-            trainer.lr_step_update(trainer.get_num_updates())
-            if 'best' in extra_state:
-                save_checkpoint.best = extra_state['best']
+    print(f'Validation loss: {losses.avg}')
+    return losses.avg
 
 
 if __name__ == '__main__':
