@@ -1,12 +1,20 @@
 #!/bin/bash
 
+#SBATCH --job-name=image_ms
+#SBATCH --nodes=1
+#SBATCH --partition=tesla
+#SBATCH --gpus=1
+
 # set up environment
-source activate ms1.1
+source activate torch1.5
+export export LD_LIBRARY_PATH=~/.conda/envs/torch1.5/lib:lib64:$LD_LIBRARY_PATH
 
 platform="gpu"
 arch="resnet50"
-dataset="imagenet2012"
-dataset_path="/disk/Datasets/ImageNet/ILSVRC2012"
+dataset="cifar10"
+# dataset="imagenet2012"
+dataset_path="/ssd/CIFAR10"
+# dataset_path="/disk/Datasets/ImageNet/ILSVRC2012"
 batch_size=256
 
 cd ..
@@ -18,4 +26,4 @@ python3 train.py \
     --dataset=${dataset} \
     --dataset_path=${dataset_path} \
     --batch_size=${batch_size} \
-    &> ./output/${platform}/${arch}_${dataset}/bs_${batch_size}.log &
+    # &> ./output/${platform}/${arch}_${dataset}/bs_${batch_size}.log &

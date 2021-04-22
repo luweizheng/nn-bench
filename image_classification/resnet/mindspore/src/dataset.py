@@ -43,6 +43,7 @@ def create_dataset1(dataset_path, do_train, repeat_num=1, batch_size=32, target=
         rank_id = get_rank()
         device_num = get_group_size()
 
+    print(f"{dataset_path}")
     if device_num == 1:
         ds = de.Cifar10Dataset(dataset_path, num_parallel_workers=8, shuffle=True)
     else:

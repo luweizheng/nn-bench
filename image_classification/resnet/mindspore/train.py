@@ -192,8 +192,9 @@ if __name__ == '__main__':
                            config.loss_scale)
             loss_scale = FixedLossScaleManager(config.loss_scale, drop_overflow_update=False)
             # Mixed precision
+            # 1.1.1 to eval the model, we must set keep_batchnorm_fp32=True
             model = Model(net, loss_fn=loss, optimizer=opt, loss_scale_manager=loss_scale, metrics={"top1": Top1CategoricalAccuracy(), "loss": Loss()},
-                          amp_level="O2", keep_batchnorm_fp32=False)
+                          amp_level="O2", keep_batchnorm_fp32=True)
         else:
             ## fp32 training
             opt = Momentum(filter(lambda x: x.requires_grad, net.get_parameters()), lr, config.momentum, config.weight_decay)
