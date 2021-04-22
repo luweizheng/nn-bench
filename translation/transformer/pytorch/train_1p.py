@@ -212,8 +212,8 @@ def train(args, datasets, epoch_itr, model, criterion, optimizer):
         losses.update(loss.item() / sample['ntokens'] / math.log(2))
 
         if args.amp:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
+            with amp.scale_loss(loss, optimizer) as scaled_loss:
+                scaled_loss.backward()
         else:
             loss.backward()
 
